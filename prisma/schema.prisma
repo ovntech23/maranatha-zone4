@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String?
+  email     String   @unique
+  password  String
+  role      String   @default("Deacon")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Member {
+  id        String       @id @default(uuid())
+  name      String
+  cell      String       // "A" or "B"
+  role      String       // "Member", "Elder", "Deacon", etc.
+  gender    String       // "Male", "Female"
+  phone     String?
+  status    String       @default("Active") // "Active", "Inactive"
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  attendances Attendance[]
+  pledges     Pledge[]
+}
+
+model Meeting {
+  id        String       @id @default(uuid())
+  cell      String       // "A", "B", "Zone"
+  date      DateTime
+  type      String       // "Weekly", "Zone Meeting", "Ladies' Meeting", etc.
+  notes     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  attendances Attendance[]
+  offerings   Offering[]
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  meetingId String
+  memberId  String
+  status    String   // "Present", "Absent", "Excused"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member    Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, memberId])
+}
+
+model Offering {
+  id        String   @id @default(uuid())
+  meetingId String
+  amount    Float
+  collector String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+}
+
+model Pledge {
+  id           String   @id @default(uuid())
+  eventName    String
+  cell         String
+  memberId     String
+  pledgeAmount Float
+  paidAmount   Float    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  member       Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  cell        String
+  date        DateTime
+  category    String
+  description String
+  amount      Float
+  approvedBy  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
