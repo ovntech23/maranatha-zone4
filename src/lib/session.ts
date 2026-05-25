@@ -1,12 +1,17 @@
 import { cookies } from "next/headers";
 
+let runtimeSecret: string | null = null;
+
 function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("SESSION_SECRET environment variable is missing. This is critically required in production to prevent session forgery.");
+    if (!runtimeSecret) {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      runtimeSecret = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+      console.warn("⚠️ WARNING: SESSION_SECRET env variable is missing! Generated a dynamic secure key in-memory for this runtime session.");
     }
-    return "development-only-fallback-secret-key-zone4-system";
+    return runtimeSecret;
   }
   return secret;
 }
