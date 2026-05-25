@@ -13,7 +13,27 @@ import {
 } from "@/app/actions";
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
-const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate = (d: any) => {
+  if (!d) return "—";
+  try {
+    let dateObj: Date;
+    if (typeof d === "string") {
+      if (d.includes("T")) {
+        dateObj = new Date(d);
+      } else {
+        dateObj = new Date(d + "T00:00:00");
+      }
+    } else {
+      dateObj = new Date(d);
+    }
+    if (isNaN(dateObj.getTime())) {
+      return "—";
+    }
+    return dateObj.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  } catch (err) {
+    return "—";
+  }
+};
 
 // ─── UI Base Components ──────────────────────────────────────────────────
 
@@ -340,9 +360,13 @@ const Attendance: React.FC<AttendanceProps> = ({ members, meetings, setMeetings,
     const created = await actionCreateMeeting(form, cellMembers.map(m => m.id));
     
     // Format meeting date correctly for standard JS UI string comparison
+    const dateStr = created.date instanceof Date
+      ? created.date.toISOString().slice(0, 10)
+      : (typeof created.date === "string" ? created.date.slice(0, 10) : "");
+
     const formattedMeeting = {
       ...created,
-      date: created.date instanceof Date ? created.date.toISOString().slice(0, 10) : created.date,
+      date: dateStr,
     };
     
     setMeetings(p => [...p, formattedMeeting]);
