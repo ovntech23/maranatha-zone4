@@ -1,6 +1,15 @@
 import { cookies } from "next/headers";
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "default-very-long-and-secure-session-secret-key-zone4";
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SESSION_SECRET environment variable is missing. This is critically required in production to prevent session forgery.");
+    }
+    return "development-only-fallback-secret-key-zone4-system";
+  }
+  return secret;
+}
 
 export interface SessionPayload {
   userId: string;
@@ -12,7 +21,7 @@ export interface SessionPayload {
 // Convert string secret to CryptoKey for HMAC-SHA256 operations
 async function getCryptoKey(): Promise<CryptoKey> {
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(SESSION_SECRET);
+  const keyData = encoder.encode(getSessionSecret());
   return await crypto.subtle.importKey(
     "raw",
     keyData,
@@ -58,9 +67,17 @@ export async function decrypt(token: string): Promise<SessionPayload | null> {
     const encoder = new TextEncoder();
     const key = await getCryptoKey();
     
+    // Ensure signature is a valid hex string of even length to prevent parsing errors
+    if (!/^[0-9a-fA-F]+$/.test(signatureHex) || signatureHex.length % 2 !== 0) {
+      return null;
+    }
+
+    const matches = signatureHex.match(/.{1,2}/g);
+    if (!matches) return null;
+
     // Convert hex signature back to ArrayBuffer
     const signatureBuffer = new Uint8Array(
-      signatureHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
+      matches.map(byte => parseInt(byte, 16))
     );
     
     const isValid = await crypto.subtle.verify(
