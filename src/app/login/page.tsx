@@ -11,27 +11,24 @@ const initialState = {
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(
     async (prevState: any, formData: FormData) => {
-      const res = await loginUser(prevState, formData);
-      if (res?.error) {
-        return { error: res.error, success: false };
+      try {
+        const res = await loginUser(prevState, formData);
+        if (res?.error) {
+          return { error: res.error, success: false };
+        }
+        if (res?.success) {
+          // Redirection is handled on the client or automatically by middleware refresh
+          window.location.href = "/";
+          return { error: null, success: true };
+        }
+        return prevState;
+      } catch (err: any) {
+        console.error("Client login interaction failed:", err);
+        return { error: "Failed to connect to authentication service. Please check your connection.", success: false };
       }
-      if (res?.success) {
-        // Redirection is handled on the client or automatically by middleware refresh
-        window.location.href = "/";
-        return { error: null, success: true };
-      }
-      return prevState;
     },
     initialState
   );
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    startTransition(() => {
-      formAction(formData);
-    });
-  };
 
   return (
     <div className="login-container">
@@ -42,7 +39,7 @@ export default function LoginPage() {
           <p className="login-subtitle">Zone 4 · Cell Management System</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form action={formAction} className="login-form">
           {state.error && (
             <div className="login-error-banner">
               <span>⚠️</span>

@@ -174,51 +174,61 @@ export async function setOpeningBalance(cell: string, amount: number) {
 }
 
 export async function loginUser(prevState: any, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  try {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
-  if (!email || !password) {
-    return { error: "Please fill in all fields" };
-  }
+    if (!email || !password) {
+      return { error: "Please fill in all fields" };
+    }
 
-  // Resolve client IP from request headers for security tracking
-  const headersList = await headers();
-  const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
-  
-  // Strict rate limit: 5 attempts per 1 minute per IP + email
-  const rateLimitKey = `login:${ip}:${email.toLowerCase().trim()}`;
-  const rateLimitResult = checkRateLimit(rateLimitKey, 5, 60000);
+    // Resolve client IP from request headers for security tracking
+    let ip = "127.0.0.1";
+    try {
+      const headersList = await headers();
+      ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+    } catch (e) {
+      console.warn("Could not resolve IP from headers:", e);
+    }
+    
+    // Strict rate limit: 5 attempts per 1 minute per IP + email
+    const rateLimitKey = `login:${ip}:${email.toLowerCase().trim()}`;
+    const rateLimitResult = checkRateLimit(rateLimitKey, 5, 60000);
 
-  if (!rateLimitResult.success) {
-    const seconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
-    return { error: `Too many attempts. Please try again in ${seconds} second(s).` };
-  }
+    if (!rateLimitResult.success) {
+      const seconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+      return { error: `Too many attempts. Please try again in ${seconds} second(s).` };
+    }
 
-  // Dynamically auto-seed the default administrator if the user table is completely empty
-  const userCount = await prisma.user.count();
-  if (userCount === 0) {
-    await prisma.user.create({
-      data: {
-        id: "admin-user-uuid",
-        name: "Deacon Admin",
-        email: "admin@maranatha.org",
-        password: hashPassword("password123"),
-        role: "Deacon",
-      },
+    // Dynamically auto-seed the default administrator if the user table is completely empty
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      await prisma.user.create({
+        data: {
+          id: "admin-user-uuid",
+          name: "Deacon Admin",
+          email: "admin@maranatha.org",
+          password: hashPassword("password123"),
+          role: "Deacon",
+        },
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
     });
+
+    if (!user || !verifyPassword(password, user.password)) {
+      return { error: "Invalid email or password" };
+    }
+
+    await createSession(user.id, user.email, user.role);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Login action critical error:", error);
+    return { error: error?.message || "An unexpected server error occurred during login. Please try again." };
   }
-
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() },
-  });
-
-  if (!user || !verifyPassword(password, user.password)) {
-    return { error: "Invalid email or password" };
-  }
-
-  await createSession(user.id, user.email, user.role);
-
-  return { success: true };
 }
 
 export async function logoutUser() {
