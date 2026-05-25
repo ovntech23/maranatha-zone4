@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { decrypt } from "@/lib/session";
 
-const PROTECTED_ROUTES = ["/"];
 const AUTH_ROUTES = ["/login"];
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Get the session cookie
@@ -17,15 +16,15 @@ export async function proxy(request: NextRequest) {
     session = await decrypt(sessionToken);
   }
 
-  // 3. Handle protected routes gate
-  const isProtected = PROTECTED_ROUTES.some(route => pathname === route || pathname.startsWith(route + "/"));
+  // 3. Handle protected routes gate (everything except login)
+  const isAuthRoute = AUTH_ROUTES.includes(pathname);
+  const isProtected = !isAuthRoute;
   if (isProtected && !session) {
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
 
   // 4. Redirect logged-in users away from auth pages
-  const isAuthRoute = AUTH_ROUTES.some(route => pathname === route);
   if (isAuthRoute && session) {
     const dashboardUrl = new URL("/", request.url);
     return NextResponse.redirect(dashboardUrl);
