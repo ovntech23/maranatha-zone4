@@ -1,5 +1,2 @@
 [phases.setup]
 nixpkgsArchive = "51ad838b03a05b1de6f9f2a0fffecee64a9788ee"
-
-[variables]
-PRISMA_CLIENT_ENGINE_TYPE = "library"
