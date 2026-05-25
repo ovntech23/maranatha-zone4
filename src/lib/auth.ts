@@ -15,6 +15,12 @@ export function hashPassword(password: string): string {
  * Uses crypto.timingSafeEqual to prevent timing attacks.
  */
 export function verifyPassword(password: string, stored: string): boolean {
+  // Backwards compatibility: If the stored password is not in salt:hash format,
+  // perform a plain-text comparison (useful for old seed data).
+  if (!stored.includes(":")) {
+    return password === stored;
+  }
+  
   const [salt, hash] = stored.split(":");
   if (!salt || !hash) return false;
   
