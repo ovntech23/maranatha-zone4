@@ -150,3 +150,13 @@ export async function addExpense(data: {
   revalidatePath("/");
   return expense;
 }
+
+export async function setOpeningBalance(cell: string, amount: number) {
+  const result = await prisma.openingBalance.upsert({
+    where: { cell },
+    update: { amount },
+    create: { cell, amount },
+  });
+  revalidatePath("/");
+  return result;
+}

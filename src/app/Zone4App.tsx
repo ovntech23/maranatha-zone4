@@ -9,6 +9,7 @@ import {
   addOffering,
   addPledge,
   addExpense,
+  setOpeningBalance,
 } from "@/app/actions";
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
@@ -94,15 +95,19 @@ interface DashboardProps {
   offerings: any[];
   pledges: any[];
   expenses: any[];
+  openingBalances: any[];
 }
 
 // ─── Dashboard Page ──────────────────────────────────────────────────────
-function Dashboard({ members, meetings, attendance, offerings, pledges, expenses }: DashboardProps) {
+function Dashboard({ members, meetings, attendance, offerings, pledges, expenses, openingBalances }: DashboardProps) {
   const activeMembers = members.filter(m => m.status === "Active");
+  const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
+  const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
+
   const totalOffering = offerings.reduce((s, o) => s + o.amount, 0);
   const totalPledgePaid = pledges.reduce((s, p) => s + p.paidAmount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const balance = totalOffering + totalPledgePaid - totalExpenses;
+  const balance = totalOpening + totalOffering + totalPledgePaid - totalExpenses;
 
   const avgAtt = (cell) => {
     const cm = meetings.filter(m => m.cell === cell);
@@ -127,7 +132,8 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
         <Stat label="Meetings held" value={meetings.length} variant="gold" />
       </div>
 
-      <div className="dashboard__stats">
+      <div className="dashboard__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <Stat label="Opening balance" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
@@ -567,21 +573,28 @@ interface FinanceProps {
   setPledges: React.Dispatch<React.SetStateAction<any[]>>;
   expenses: any[];
   setExpenses: React.Dispatch<React.SetStateAction<any[]>>;
+  openingBalances: any[];
+  setOpeningBalances: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 // ─── Finance Page ────────────────────────────────────────────────────────
-const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOfferings, pledges, setPledges, expenses, setExpenses }) => {
+const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOfferings, pledges, setPledges, expenses, setExpenses, openingBalances, setOpeningBalances }) => {
   const [tab, setTab] = useState("offerings");
   const [showModal, setShowModal] = useState(false);
+  const [showOpeningModal, setShowOpeningModal] = useState(false);
 
   const [offForm, setOffForm] = useState({ meetingId: "", amount: "", collector: "", notes: "" });
   const [pledgeForm, setPledgeForm] = useState({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
   const [expForm, setExpForm] = useState({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" });
+  const [openingForm, setOpeningForm] = useState({ cell: "A", amount: "" });
+
+  const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
+  const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
 
   const totalOffering = offerings.reduce((s, o) => s + o.amount, 0);
   const totalPledgePaid = pledges.reduce((s, p) => s + p.paidAmount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const balance = totalOffering + totalPledgePaid - totalExpenses;
+  const balance = totalOpening + totalOffering + totalPledgePaid - totalExpenses;
 
   const getMtgLabel = id => { const m = meetings.find(x => x.id == id); return m ? `Cell ${m.cell} · ${fmtDate(m.date)}` : "—"; };
   const getMemberName = id => members.find(m => m.id == id)?.name || "—";
@@ -618,16 +631,35 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     setShowModal(false);
   };
 
+  const saveOpeningBalance = async () => {
+    if (!openingForm.amount) return;
+    const amount = parseFloat(openingForm.amount);
+    const createdOrUpdated = await setOpeningBalance(openingForm.cell, amount);
+    setOpeningBalances(p => {
+      const ex = p.find(o => o.cell === openingForm.cell);
+      if (ex) return p.map(o => o.cell === openingForm.cell ? createdOrUpdated : o);
+      return [...p, createdOrUpdated];
+    });
+    setOpeningForm({ cell: "A", amount: "" });
+    setShowOpeningModal(false);
+  };
+
   return (
     <div>
       <div className="finance__header">
         <h2 className="finance__title">Finances</h2>
-        <Btn size="sm" onClick={() => setShowModal(true)}>
-          + Record {tab === "offerings" ? "offering" : tab === "pledges" ? "pledge" : "expense"}
-        </Btn>
+        <div className="flex gap-2">
+          <Btn size="sm" variant="ghost" onClick={() => setShowOpeningModal(true)}>
+            ⚙ Set opening balance
+          </Btn>
+          <Btn size="sm" onClick={() => setShowModal(true)}>
+            + Record {tab === "offerings" ? "offering" : tab === "pledges" ? "pledge" : "expense"}
+          </Btn>
+        </div>
       </div>
 
-      <div className="finance__stats">
+      <div className="finance__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <Stat label="Opening balance" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
@@ -809,6 +841,37 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
           )}
         </Modal>
       )}
+
+      {showOpeningModal && (
+        <Modal title="Set Opening Book Balance" onClose={() => setShowOpeningModal(false)}>
+          <div>
+            <div className="field-label">Cell / Fund Scope</div>
+            <select className="select" value={openingForm.cell} onChange={e => setOpeningForm({ ...openingForm, cell: e.target.value })}>
+              <option value="A">Cell A</option>
+              <option value="B">Cell B</option>
+              <option value="Zone">Zone Fund (Combined)</option>
+            </select>
+          </div>
+          <div>
+            <div className="field-label">Opening Balance Amount (ZMW)</div>
+            <input 
+              className="input" 
+              type="number" 
+              min="0" 
+              value={openingForm.amount} 
+              onChange={e => setOpeningForm({ ...openingForm, amount: e.target.value })} 
+              placeholder="e.g. 5000" 
+            />
+          </div>
+          <div className="info-box" style={{ marginTop: 12 }}>
+            This balance will serve as the starting book value for the selected cell or combined fund.
+          </div>
+          <div className="flex gap-2" style={{ marginTop: 12 }}>
+            <Btn style={{ flex: 1 }} onClick={saveOpeningBalance}>Save balance</Btn>
+            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowOpeningModal(false)}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -820,6 +883,7 @@ interface Zone4AppProps {
   initialOfferings: any[];
   initialPledges: any[];
   initialExpenses: any[];
+  initialOpeningBalances: any[];
 }
 
 // ─── Root Component ──────────────────────────────────────────────────────
@@ -830,6 +894,7 @@ export default function Zone4App({
   initialOfferings,
   initialPledges,
   initialExpenses,
+  initialOpeningBalances,
 }: Zone4AppProps) {
   const [page, setPage] = useState("dashboard");
   const [members, setMembers] = useState(initialMembers);
@@ -838,6 +903,7 @@ export default function Zone4App({
   const [offerings, setOfferings] = useState(initialOfferings);
   const [pledges, setPledges] = useState(initialPledges);
   const [expenses, setExpenses] = useState(initialExpenses);
+  const [openingBalances, setOpeningBalances] = useState(initialOpeningBalances);
 
   const props = {
     members,
@@ -852,6 +918,8 @@ export default function Zone4App({
     setPledges,
     expenses,
     setExpenses,
+    openingBalances,
+    setOpeningBalances,
   };
 
   const nav = [

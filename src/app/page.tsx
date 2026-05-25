@@ -26,6 +26,8 @@ export default async function Page() {
     orderBy: { date: "desc" },
   });
 
+  const openingBalances = await prisma.openingBalance.findMany();
+
   // Serialize records to plain JSON types (Date -> ISO String)
   const serializedMembers = members.map((m) => ({
     id: m.id,
@@ -79,6 +81,12 @@ export default async function Page() {
     approvedBy: e.approvedBy,
   }));
 
+  const serializedOpeningBalances = openingBalances.map((o) => ({
+    id: o.id,
+    cell: o.cell,
+    amount: o.amount,
+  }));
+
   return (
     <Zone4App
       initialMembers={serializedMembers}
@@ -87,6 +95,7 @@ export default async function Page() {
       initialOfferings={serializedOfferings}
       initialPledges={serializedPledges}
       initialExpenses={serializedExpenses}
+      initialOpeningBalances={serializedOpeningBalances}
     />
   );
 }
