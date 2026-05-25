@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { verifyPassword } from "@/lib/auth";
+import { verifyPassword, hashPassword } from "@/lib/auth";
 import { createSession, deleteSession } from "@/lib/session";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -192,6 +192,20 @@ export async function loginUser(prevState: any, formData: FormData) {
   if (!rateLimitResult.success) {
     const seconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
     return { error: `Too many attempts. Please try again in ${seconds} second(s).` };
+  }
+
+  // Dynamically auto-seed the default administrator if the user table is completely empty
+  const userCount = await prisma.user.count();
+  if (userCount === 0) {
+    await prisma.user.create({
+      data: {
+        id: "admin-user-uuid",
+        name: "Deacon Admin",
+        email: "admin@maranatha.org",
+        password: hashPassword("password123"),
+        role: "Deacon",
+      },
+    });
   }
 
   const user = await prisma.user.findUnique({
