@@ -35,6 +35,14 @@ export async function toggleMemberStatus(id: string, currentStatus: string) {
   return member;
 }
 
+export async function deleteMember(id: string) {
+  const member = await prisma.member.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return member;
+}
+
 export async function createMeeting(
   meetingData: {
     cell: string;

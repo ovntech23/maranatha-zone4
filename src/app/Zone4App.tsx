@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   addMember,
   toggleMemberStatus,
+  deleteMember,
   createMeeting as actionCreateMeeting,
   updateAttendance,
   addOffering,
@@ -261,16 +262,30 @@ function Members({ members, setMembers }: MembersProps) {
                   <td><span className="text-sm" style={{ color: "var(--text-secondary)" }}>{m.phone || "—"}</span></td>
                   <td><Badge label={m.status} variant={m.status === "Active" ? "green" : "muted"} /></td>
                   <td className="text-right">
-                    <Btn 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={async () => {
-                        const updated = await toggleMemberStatus(m.id, m.status);
-                        setMembers(p => p.map(x => x.id === m.id ? updated : x));
-                      }}
-                    >
-                      {m.status === "Active" ? "Deactivate" : "Activate"}
-                    </Btn>
+                    <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                      <Btn 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={async () => {
+                          const updated = await toggleMemberStatus(m.id, m.status);
+                          setMembers(p => p.map(x => x.id === m.id ? updated : x));
+                        }}
+                      >
+                        {m.status === "Active" ? "Deactivate" : "Activate"}
+                      </Btn>
+                      <Btn 
+                        variant="danger" 
+                        size="sm" 
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete ${m.name}? This will permanently remove their records, including attendance and pledges.`)) {
+                            await deleteMember(m.id);
+                            setMembers(p => p.filter(x => x.id !== m.id));
+                          }
+                        }}
+                      >
+                        Delete
+                      </Btn>
+                    </div>
                   </td>
                 </tr>
               ))}
