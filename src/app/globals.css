@@ -1220,3 +1220,38 @@ body {
   transform: none;
   box-shadow: none;
 }
+
+/* ===== ACCESSIBILITY: REDUCED MOTION SUPPORT ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-delay: -1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    background-attachment: initial !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+  
+  .login-logo {
+    animation: none !important;
+  }
+  
+  .login-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+  
+  .login-btn:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  .login-card {
+    animation: none !important;
+  }
+  
+  .login-error-banner {
+    animation: none !important;
+  }
+}

@@ -2,8 +2,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { verifyPassword } from "@/lib/auth";
 import { createSession, deleteSession } from "@/lib/session";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function addMember(data: {
   name: string;
@@ -179,6 +181,19 @@ export async function loginUser(prevState: any, formData: FormData) {
     return { error: "Please fill in all fields" };
   }
 
+  // Resolve client IP from request headers for security tracking
+  const headersList = await headers();
+  const ip = headersList.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1";
+  
+  // Strict rate limit: 5 attempts per 1 minute per IP + email
+  const rateLimitKey = `login:${ip}:${email.toLowerCase().trim()}`;
+  const rateLimitResult = checkRateLimit(rateLimitKey, 5, 60000);
+
+  if (!rateLimitResult.success) {
+    const seconds = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000);
+    return { error: `Too many attempts. Please try again in ${seconds} second(s).` };
+  }
+
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase().trim() },
   });
@@ -193,6 +208,12 @@ export async function loginUser(prevState: any, formData: FormData) {
 }
 
 export async function logoutUser() {
-  await deleteSession();
-  revalidatePath("/");
+  try {
+    await deleteSession();
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    console.error("Logout failed securely:", error);
+    return { error: "Failed to logout securely" };
+  }
 }
