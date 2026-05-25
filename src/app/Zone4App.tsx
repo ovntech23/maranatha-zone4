@@ -11,6 +11,7 @@ import {
   addPledge,
   addExpense,
   setOpeningBalance,
+  logoutUser,
 } from "@/app/actions";
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
@@ -923,6 +924,11 @@ interface Zone4AppProps {
   initialPledges: any[];
   initialExpenses: any[];
   initialOpeningBalances: any[];
+  userSession?: {
+    name: string;
+    email: string;
+    role: string;
+  } | null;
 }
 
 // ─── Root Component ──────────────────────────────────────────────────────
@@ -934,6 +940,7 @@ export default function Zone4App({
   initialPledges,
   initialExpenses,
   initialOpeningBalances,
+  userSession,
 }: Zone4AppProps) {
   const [page, setPage] = useState("dashboard");
   const [members, setMembers] = useState(initialMembers);
@@ -976,9 +983,30 @@ export default function Zone4App({
           <div className="app-title">Maranatha Bible Church</div>
           <div className="app-subtitle">Zone 4 · Cell Management System</div>
         </div>
-        <div className="flex gap-2">
-          <Badge label="Cell A" variant="purple" />
-          <Badge label="Cell B" variant="green" />
+        <div className="flex gap-4 items-center flex-wrap">
+          <div className="flex gap-2">
+            <Badge label="Cell A" variant="purple" />
+            <Badge label="Cell B" variant="green" />
+          </div>
+          
+          {userSession && (
+            <div className="flex items-center gap-3" style={{ borderLeft: "1px solid var(--border)", paddingLeft: "1rem" }}>
+              <div className="flex flex-col text-right">
+                <span className="text-sm font-bold">{userSession.name}</span>
+                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{userSession.role}</span>
+              </div>
+              <Btn 
+                variant="ghost" 
+                size="sm" 
+                onClick={async () => {
+                  await logoutUser();
+                  window.location.href = "/login";
+                }}
+              >
+                Logout
+              </Btn>
+            </div>
+          )}
         </div>
       </header>
 

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { verifyPassword } from "@/lib/auth";
+import { createSession, deleteSession } from "@/lib/session";
 
 export async function addMember(data: {
   name: string;
@@ -167,4 +169,30 @@ export async function setOpeningBalance(cell: string, amount: number) {
   });
   revalidatePath("/");
   return result;
+}
+
+export async function loginUser(prevState: any, formData: FormData) {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+
+  if (!email || !password) {
+    return { error: "Please fill in all fields" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase().trim() },
+  });
+
+  if (!user || !verifyPassword(password, user.password)) {
+    return { error: "Invalid email or password" };
+  }
+
+  await createSession(user.id, user.email, user.role);
+
+  return { success: true };
+}
+
+export async function logoutUser() {
+  await deleteSession();
+  revalidatePath("/");
 }

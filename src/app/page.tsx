@@ -1,9 +1,25 @@
 import { prisma } from "@/lib/prisma";
 import Zone4App from "./Zone4App";
+import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  const session = await getSession();
+  let userSession = null;
+  if (session) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { name: true, email: true, role: true },
+    });
+    if (dbUser) {
+      userSession = {
+        name: dbUser.name || "Deacon Admin",
+        email: dbUser.email,
+        role: dbUser.role,
+      };
+    }
+  }
   const members = await prisma.member.findMany({
     orderBy: { name: "asc" },
   });
@@ -96,6 +112,7 @@ export default async function Page() {
       initialPledges={serializedPledges}
       initialExpenses={serializedExpenses}
       initialOpeningBalances={serializedOpeningBalances}
+      userSession={userSession}
     />
   );
 }

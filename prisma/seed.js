@@ -1,5 +1,12 @@
 const { PrismaClient } = require("@prisma/client");
+const crypto = require("crypto");
 const prisma = new PrismaClient();
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  return `${salt}:${hash}`;
+}
 
 const SEED_MEMBERS = [
   { id: 1, name: "Grace Mwansa", cell: "A", role: "Member", phone: "097-111-0001", status: "Active", gender: "Female" },
@@ -113,7 +120,7 @@ async function main() {
       id: "admin-user-uuid",
       name: "Deacon Admin",
       email: "admin@maranatha.org",
-      password: "password123", // Plain text placeholder
+      password: hashPassword("password123"),
       role: "Deacon",
     },
   });
