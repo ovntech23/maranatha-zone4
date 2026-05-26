@@ -15,6 +15,14 @@ import {
   addSundaySchoolChild,
   toggleSundaySchoolChildStatus,
   deleteSundaySchoolChild,
+  updateMember,
+  updateSundaySchoolChild,
+  updateOffering,
+  deleteOffering,
+  updatePledge,
+  deletePledge,
+  updateExpense,
+  deleteExpense,
 } from "@/app/actions";
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
@@ -272,14 +280,21 @@ function Members({ members, setMembers }: MembersProps) {
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState("All");
   const [form, setForm] = useState({ name: "", cell: "A", role: "Member", phone: "", status: "Active", gender: "Female" });
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
 
   const filtered = members.filter(m => filter === "All" || m.cell === filter);
   const roleVariant = { Member: "", Elder: "gold", Deacon: "green", Treasurer: "gold", Secretary: "purple", "Youth Leader": "accent", "Cell Leader": "green", "Women's Chairlady": "purple", "Zone Pastor": "accent" };
 
   const save = async () => {
     if (!form.name.trim()) return;
-    const created = await addMember(form);
-    setMembers(p => [...p, created]);
+    if (editingMemberId) {
+      const updated = await updateMember(editingMemberId, form);
+      setMembers(p => p.map(x => x.id === editingMemberId ? updated : x));
+      setEditingMemberId(null);
+    } else {
+      const created = await addMember(form);
+      setMembers(p => [...p, created]);
+    }
     setForm({ name: "", cell: "A", role: "Member", phone: "", status: "Active", gender: "Female" });
     setShowModal(false);
   };
@@ -317,6 +332,17 @@ function Members({ members, setMembers }: MembersProps) {
                       <Btn 
                         variant="ghost" 
                         size="sm" 
+                        onClick={() => {
+                          setForm({ name: m.name, cell: m.cell, role: m.role, phone: m.phone || "", status: m.status, gender: m.gender || "Female" });
+                          setEditingMemberId(m.id);
+                          setShowModal(true);
+                        }}
+                      >
+                        Edit
+                      </Btn>
+                      <Btn 
+                        variant="ghost" 
+                        size="sm" 
                         onClick={async () => {
                           const updated = await toggleMemberStatus(m.id, m.status);
                           setMembers(p => p.map(x => x.id === m.id ? updated : x));
@@ -346,7 +372,7 @@ function Members({ members, setMembers }: MembersProps) {
       </Card>
 
       {showModal && (
-        <Modal title="Add new member" onClose={() => setShowModal(false)}>
+        <Modal title={editingMemberId ? "Edit member" : "Add new member"} onClose={() => { setShowModal(false); setEditingMemberId(null); setForm({ name: "", cell: "A", role: "Member", phone: "", status: "Active", gender: "Female" }); }}>
           <div>
             <div className="field-label">Full name</div>
             <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Grace Mwansa" />
@@ -385,9 +411,18 @@ function Members({ members, setMembers }: MembersProps) {
               <option>Zone Pastor</option>
             </select>
           </div>
+          {editingMemberId && (
+            <div>
+              <div className="field-label">Status</div>
+              <select className="select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          )}
           <div className="flex gap-2" style={{ marginTop: 4 }}>
-            <Btn style={{ flex: 1 }} onClick={save}>Save member</Btn>
-            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+            <Btn style={{ flex: 1 }} onClick={save}>{editingMemberId ? "Update member" : "Save member"}</Btn>
+            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingMemberId(null); setForm({ name: "", cell: "A", role: "Member", phone: "", status: "Active", gender: "Female" }); }}>Cancel</Btn>
           </div>
         </Modal>
       )}
@@ -413,17 +448,27 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
     parentPhone: "",
     status: "Active",
   });
+  const [editingChildId, setEditingChildId] = useState<string | null>(null);
 
   const filtered = sundaySchoolChildren.filter(c => filter === "All" || c.cell === filter);
 
   const save = async () => {
     if (!form.name.trim()) return;
-    const childAge = form.age ? parseInt(form.age) : undefined;
-    const created = await addSundaySchoolChild({
-      ...form,
-      age: childAge,
-    });
-    setSundaySchoolChildren(p => [...p, created]);
+    const childAge = form.age ? parseInt(form.age) : null;
+    if (editingChildId) {
+      const updated = await updateSundaySchoolChild(editingChildId, {
+        ...form,
+        age: childAge !== null ? childAge : undefined,
+      });
+      setSundaySchoolChildren(p => p.map(x => x.id === editingChildId ? updated : x));
+      setEditingChildId(null);
+    } else {
+      const created = await addSundaySchoolChild({
+        ...form,
+        age: childAge !== null ? childAge : undefined,
+      });
+      setSundaySchoolChildren(p => [...p, created]);
+    }
     setForm({
       name: "",
       cell: "A",
@@ -487,6 +532,17 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
                       <Btn
                         variant="ghost"
                         size="sm"
+                        onClick={() => {
+                          setForm({ name: c.name, cell: c.cell, gender: c.gender, age: c.age ? String(c.age) : "", parentName: c.parentName || "", parentPhone: c.parentPhone || "", status: c.status });
+                          setEditingChildId(c.id);
+                          setShowModal(true);
+                        }}
+                      >
+                        Edit
+                      </Btn>
+                      <Btn
+                        variant="ghost"
+                        size="sm"
                         onClick={async () => {
                           const updated = await toggleSundaySchoolChildStatus(c.id, c.status);
                           setSundaySchoolChildren(p => p.map(x => x.id === c.id ? updated : x));
@@ -516,7 +572,7 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
       </Card>
 
       {showModal && (
-        <Modal title="Add new child" onClose={() => setShowModal(false)}>
+        <Modal title={editingChildId ? "Edit child" : "Add new child"} onClose={() => { setShowModal(false); setEditingChildId(null); setForm({ name: "", cell: "A", gender: "Female", age: "", parentName: "", parentPhone: "", status: "Active" }); }}>
           <div>
             <div className="field-label">Full name</div>
             <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Chipo Banda" />
@@ -551,9 +607,18 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
               <input className="input" value={form.parentPhone} onChange={e => setForm({ ...form, parentPhone: e.target.value })} placeholder="e.g. 097-000-0000" />
             </div>
           </div>
+          {editingChildId && (
+            <div>
+              <div className="field-label">Status</div>
+              <select className="select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          )}
           <div className="flex gap-2" style={{ marginTop: 12 }}>
-            <Btn style={{ flex: 1 }} onClick={save}>Save child</Btn>
-            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+            <Btn style={{ flex: 1 }} onClick={save}>{editingChildId ? "Update child" : "Save child"}</Btn>
+            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingChildId(null); setForm({ name: "", cell: "A", gender: "Female", age: "", parentName: "", parentPhone: "", status: "Active" }); }}>Cancel</Btn>
           </div>
         </Modal>
       )}
@@ -840,6 +905,9 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const [showOpeningModal, setShowOpeningModal] = useState(false);
 
   const [offForm, setOffForm] = useState({ meetingId: "", amount: "", collector: "", notes: "" });
+  const [editingOfferingId, setEditingOfferingId] = useState<string | null>(null);
+  const [editingPledgeId, setEditingPledgeId] = useState<string | null>(null);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [pledgeForm, setPledgeForm] = useState({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
   const [expForm, setExpForm] = useState({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" });
   const [openingForm, setOpeningForm] = useState({ cell: "A", amount: "" });
@@ -876,8 +944,14 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const saveOffering = async () => {
     if (!offForm.meetingId || !offForm.amount) return;
     const amount = parseFloat(offForm.amount);
-    const created = await addOffering({ ...offForm, amount });
-    setOfferings(p => [...p, created]);
+    if (editingOfferingId) {
+      const updated = await updateOffering(editingOfferingId, { ...offForm, amount });
+      setOfferings(p => p.map(x => x.id === editingOfferingId ? updated : x));
+      setEditingOfferingId(null);
+    } else {
+      const created = await addOffering({ ...offForm, amount });
+      setOfferings(p => [...p, created]);
+    }
     setOffForm({ meetingId: "", amount: "", collector: "", notes: "" });
     setShowModal(false);
   };
@@ -886,8 +960,14 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     if (!pledgeForm.eventName || !pledgeForm.memberId || !pledgeForm.pledgeAmount) return;
     const pledgeAmount = parseFloat(pledgeForm.pledgeAmount);
     const paidAmount = parseFloat(pledgeForm.paidAmount || "0");
-    const created = await addPledge({ ...pledgeForm, pledgeAmount, paidAmount });
-    setPledges(p => [...p, created]);
+    if (editingPledgeId) {
+      const updated = await updatePledge(editingPledgeId, { ...pledgeForm, pledgeAmount, paidAmount });
+      setPledges(p => p.map(x => x.id === editingPledgeId ? updated : x));
+      setEditingPledgeId(null);
+    } else {
+      const created = await addPledge({ ...pledgeForm, pledgeAmount, paidAmount });
+      setPledges(p => [...p, created]);
+    }
     setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
     setShowModal(false);
   };
@@ -895,12 +975,22 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const saveExpense = async () => {
     if (!expForm.description || !expForm.amount) return;
     const amount = parseFloat(expForm.amount);
-    const created = await addExpense({ ...expForm, amount });
-    const formattedExpense = {
-      ...created,
-      date: created.date instanceof Date ? created.date.toISOString().slice(0, 10) : created.date,
-    };
-    setExpenses(p => [...p, formattedExpense]);
+    if (editingExpenseId) {
+      const updated = await updateExpense(editingExpenseId, { ...expForm, amount });
+      const formatted = {
+        ...updated,
+        date: updated.date instanceof Date ? updated.date.toISOString().slice(0, 10) : updated.date,
+      };
+      setExpenses(p => p.map(x => x.id === editingExpenseId ? formatted : x));
+      setEditingExpenseId(null);
+    } else {
+      const created = await addExpense({ ...expForm, amount });
+      const formattedExpense = {
+        ...created,
+        date: created.date instanceof Date ? created.date.toISOString().slice(0, 10) : created.date,
+      };
+      setExpenses(p => [...p, formattedExpense]);
+    }
     setExpForm({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" });
     setShowModal(false);
   };
@@ -950,7 +1040,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div className="overflow-x-auto">
             <table className="table">
-              <thead><tr><th>Meeting</th><th>Amount (ZMW)</th><th>Collector</th><th>Notes</th></tr></thead>
+              <thead><tr><th>Meeting</th><th>Amount (ZMW)</th><th>Collector</th><th>Notes</th><th></th></tr></thead>
               <tbody>
                 {offerings.map(o => (
                   <tr key={o.id}>
@@ -958,6 +1048,33 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     <td className="mono finance__amount--positive">{fmt(o.amount)}</td>
                     <td>{o.collector}</td>
                     <td className="finance__note">{o.notes || "—"}</td>
+                    <td className="text-right">
+                      <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                        <Btn 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            setOffForm({ meetingId: o.meetingId, amount: String(o.amount), collector: o.collector, notes: o.notes || "" });
+                            setEditingOfferingId(o.id);
+                            setShowModal(true);
+                          }}
+                        >
+                          Edit
+                        </Btn>
+                        <Btn 
+                          variant="danger" 
+                          size="sm" 
+                          onClick={async () => {
+                            if (confirm("Are you sure you want to delete this offering?")) {
+                              await deleteOffering(o.id);
+                              setOfferings(p => p.filter(x => x.id !== o.id));
+                            }
+                          }}
+                        >
+                          Delete
+                        </Btn>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1022,10 +1139,10 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             <Card style={{ padding: 0, overflow: "hidden" }}>
               <div className="overflow-x-auto">
                 <table className="table">
-                  <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th><th></th></tr></thead>
                   <tbody>
                     {pledges.map(p => {
-                      const pct = Math.round((p.paidAmount / p.pledgeAmount) * 100);
+                      const pct = p.pledgeAmount ? Math.round((p.paidAmount / p.pledgeAmount) * 100) : 0;
                       return (
                         <tr key={p.id}>
                           <td><span className="font-bold">{p.eventName}</span></td>
@@ -1034,6 +1151,33 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                           <td className="mono">{fmt(p.pledgeAmount)}</td>
                           <td className="mono finance__amount--positive">{fmt(p.paidAmount)}</td>
                           <td><Badge label={pct >= 100 ? "Fulfilled" : `${pct}%`} variant={pct >= 100 ? "green" : "gold"} /></td>
+                          <td className="text-right">
+                            <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                              <Btn 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => {
+                                  setPledgeForm({ eventName: p.eventName, cell: p.cell, memberId: p.memberId, pledgeAmount: String(p.pledgeAmount), paidAmount: String(p.paidAmount) });
+                                  setEditingPledgeId(p.id);
+                                  setShowModal(true);
+                                }}
+                              >
+                                Edit
+                              </Btn>
+                              <Btn 
+                                variant="danger" 
+                                size="sm" 
+                                onClick={async () => {
+                                  if (confirm("Are you sure you want to delete this pledge?")) {
+                                    await deletePledge(p.id);
+                                    setPledges(prev => prev.filter(x => x.id !== p.id));
+                                  }
+                                }}
+                              >
+                                Delete
+                              </Btn>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1049,7 +1193,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div className="overflow-x-auto">
             <table className="table">
-              <thead><tr><th>Date</th><th>Cell</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved by</th></tr></thead>
+              <thead><tr><th>Date</th><th>Cell</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved by</th><th></th></tr></thead>
               <tbody>
                 {expenses.map(e => (
                   <tr key={e.id}>
@@ -1059,6 +1203,33 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     <td>{e.description}</td>
                     <td className="mono finance__amount--negative">{fmt(e.amount)}</td>
                     <td><span className="finance__note text-sm">{e.approvedBy}</span></td>
+                    <td className="text-right">
+                      <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                        <Btn 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => {
+                            setExpForm({ cell: e.cell, date: e.date, category: e.category, description: e.description, amount: String(e.amount), approvedBy: e.approvedBy });
+                            setEditingExpenseId(e.id);
+                            setShowModal(true);
+                          }}
+                        >
+                          Edit
+                        </Btn>
+                        <Btn 
+                          variant="danger" 
+                          size="sm" 
+                          onClick={async () => {
+                            if (confirm("Are you sure you want to delete this expense?")) {
+                              await deleteExpense(e.id);
+                              setExpenses(prev => prev.filter(x => x.id !== e.id));
+                            }
+                          }}
+                        >
+                          Delete
+                        </Btn>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1068,7 +1239,18 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       )}
 
       {showModal && (
-        <Modal title={`Record ${tab.slice(0, -1)}`} onClose={() => setShowModal(false)}>
+        <Modal 
+          title={editingOfferingId || editingPledgeId || editingExpenseId ? (editingOfferingId ? "Edit offering" : editingPledgeId ? "Edit pledge" : "Edit expense") : `Record ${tab.slice(0, -1)}`} 
+          onClose={() => { 
+            setShowModal(false); 
+            setEditingOfferingId(null); 
+            setEditingPledgeId(null); 
+            setEditingExpenseId(null); 
+            setOffForm({ meetingId: "", amount: "", collector: "", notes: "" }); 
+            setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" }); 
+            setExpForm({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" }); 
+          }}
+        >
           {tab === "offerings" && (
             <>
               <div>
@@ -1093,8 +1275,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <input className="input" value={offForm.notes} onChange={e => setOffForm({ ...offForm, notes: e.target.value })} />
               </div>
               <div className="flex gap-2">
-                <Btn style={{ flex: 1 }} onClick={saveOffering}>Save offering</Btn>
-                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+                <Btn style={{ flex: 1 }} onClick={saveOffering}>{editingOfferingId ? "Update offering" : "Save offering"}</Btn>
+                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingOfferingId(null); setOffForm({ meetingId: "", amount: "", collector: "", notes: "" }); }}>Cancel</Btn>
               </div>
             </>
           )}
@@ -1143,8 +1325,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <input className="input" type="number" min="0" value={pledgeForm.paidAmount} onChange={e => setPledgeForm({ ...pledgeForm, paidAmount: e.target.value })} placeholder="0.00" />
               </div>
               <div className="flex gap-2">
-                <Btn style={{ flex: 1 }} onClick={savePledge}>Save pledge</Btn>
-                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+                <Btn style={{ flex: 1 }} onClick={savePledge}>{editingPledgeId ? "Update pledge" : "Save pledge"}</Btn>
+                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingPledgeId(null); setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" }); }}>Cancel</Btn>
               </div>
             </>
           )}
@@ -1176,8 +1358,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <input className="input" type="number" min="0" value={expForm.amount} onChange={e => setExpForm({ ...expForm, amount: e.target.value })} placeholder="0.00" />
               </div>
               <div className="flex gap-2">
-                <Btn style={{ flex: 1 }} onClick={saveExpense}>Save expense</Btn>
-                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+                <Btn style={{ flex: 1 }} onClick={saveExpense}>{editingExpenseId ? "Update expense" : "Save expense"}</Btn>
+                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingExpenseId(null); setExpForm({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" }); }}>Cancel</Btn>
               </div>
             </>
           )}

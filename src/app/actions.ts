@@ -283,3 +283,153 @@ export async function logoutUser() {
     return { error: "Failed to logout securely" };
   }
 }
+
+export async function updateMember(
+  id: string,
+  data: {
+    name: string;
+    cell: string;
+    role: string;
+    phone?: string;
+    gender: string;
+    status: string;
+  }
+) {
+  const member = await prisma.member.update({
+    where: { id },
+    data: {
+      name: data.name,
+      cell: data.cell,
+      role: data.role,
+      phone: data.phone || null,
+      gender: data.gender,
+      status: data.status,
+    },
+  });
+  revalidatePath("/");
+  return member;
+}
+
+export async function updateSundaySchoolChild(
+  id: string,
+  data: {
+    name: string;
+    cell: string;
+    gender: string;
+    age?: number;
+    parentName?: string;
+    parentPhone?: string;
+    status: string;
+  }
+) {
+  const child = await prisma.sundaySchoolChild.update({
+    where: { id },
+    data: {
+      name: data.name,
+      cell: data.cell,
+      gender: data.gender,
+      age: data.age !== undefined && data.age !== null ? Number(data.age) : null,
+      parentName: data.parentName || null,
+      parentPhone: data.parentPhone || null,
+      status: data.status,
+    },
+  });
+  revalidatePath("/");
+  return child;
+}
+
+export async function updateOffering(
+  id: string,
+  data: {
+    meetingId: string;
+    amount: number;
+    collector: string;
+    notes?: string;
+  }
+) {
+  const offering = await prisma.offering.update({
+    where: { id },
+    data: {
+      meetingId: data.meetingId,
+      amount: data.amount,
+      collector: data.collector,
+      notes: data.notes || null,
+    },
+  });
+  revalidatePath("/");
+  return offering;
+}
+
+export async function deleteOffering(id: string) {
+  const offering = await prisma.offering.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return offering;
+}
+
+export async function updatePledge(
+  id: string,
+  data: {
+    eventName: string;
+    cell: string;
+    memberId: string;
+    pledgeAmount: number;
+    paidAmount: number;
+  }
+) {
+  const pledge = await prisma.pledge.update({
+    where: { id },
+    data: {
+      eventName: data.eventName,
+      cell: data.cell,
+      memberId: data.memberId,
+      pledgeAmount: data.pledgeAmount,
+      paidAmount: data.paidAmount,
+    },
+  });
+  revalidatePath("/");
+  return pledge;
+}
+
+export async function deletePledge(id: string) {
+  const pledge = await prisma.pledge.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return pledge;
+}
+
+export async function updateExpense(
+  id: string,
+  data: {
+    cell: string;
+    date: string;
+    category: string;
+    description: string;
+    amount: number;
+    approvedBy: string;
+  }
+) {
+  const expense = await prisma.expense.update({
+    where: { id },
+    data: {
+      cell: data.cell,
+      date: new Date(data.date + "T00:00:00Z"),
+      category: data.category,
+      description: data.description,
+      amount: data.amount,
+      approvedBy: data.approvedBy,
+    },
+  });
+  revalidatePath("/");
+  return expense;
+}
+
+export async function deleteExpense(id: string) {
+  const expense = await prisma.expense.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return expense;
+}
