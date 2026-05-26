@@ -165,7 +165,7 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
       </div>
 
       <div className="dashboard__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <Stat label="Opening balance" value={fmt(totalOpening)} variant="purple" />
+        <Stat label="Past Offerings (Opening)" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
@@ -866,7 +866,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
         <h2 className="finance__title">Finances</h2>
         <div className="flex gap-2">
           <Btn size="sm" variant="ghost" onClick={() => setShowOpeningModal(true)}>
-            ⚙ Set opening balance
+            ⚙ Set past offerings (opening)
           </Btn>
           <Btn size="sm" onClick={() => setShowModal(true)}>
             + Record {tab === "offerings" ? "offering" : tab === "pledges" ? "pledge" : "expense"}
@@ -875,7 +875,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       </div>
 
       <div className="finance__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <Stat label="Opening balance" value={fmt(totalOpening)} variant="purple" />
+        <Stat label="Past Offerings (Opening)" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
@@ -990,7 +990,21 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             <>
               <div>
                 <div className="field-label">Event name</div>
-                <input className="input" value={pledgeForm.eventName} onChange={e => setPledgeForm({ ...pledgeForm, eventName: e.target.value })} placeholder="e.g. Easter Fundraiser" />
+                <select 
+                  className="select" 
+                  value={pledgeForm.eventName} 
+                  onChange={e => setPledgeForm({ ...pledgeForm, eventName: e.target.value })}
+                >
+                  <option value="">— Select Event Category —</option>
+                  <option value="Easter Fundraiser">Easter Fundraiser</option>
+                  <option value="Building Project Fund">Building Project Fund</option>
+                  <option value="Harvest Offering Fund">Harvest Offering Fund</option>
+                  <option value="Christmas Charity Fund">Christmas Charity Fund</option>
+                  <option value="Youth Ministry Camp Fund">Youth Ministry Camp Fund</option>
+                  <option value="Zone 4 Combined Conference">Zone 4 Combined Conference</option>
+                  <option value="Special Thanksgiving Event">Special Thanksgiving Event</option>
+                  <option value="Other Church Event">Other Church Event</option>
+                </select>
               </div>
               <div>
                 <div className="field-label">Cell</div>
@@ -1059,7 +1073,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       )}
 
       {showOpeningModal && (
-        <Modal title="Set Opening Book Balance" onClose={() => setShowOpeningModal(false)}>
+        <Modal title="Set Past Offerings (Opening Balance)" onClose={() => setShowOpeningModal(false)}>
           <div>
             <div className="field-label">Cell / Fund Scope</div>
             <select className="select" value={openingForm.cell} onChange={e => setOpeningForm({ ...openingForm, cell: e.target.value })}>
@@ -1069,7 +1083,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </select>
           </div>
           <div>
-            <div className="field-label">Opening Balance Amount (ZMW)</div>
+            <div className="field-label">Past Offerings Amount (ZMW)</div>
             <input 
               className="input" 
               type="number" 
@@ -1080,7 +1094,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             />
           </div>
           <div className="info-box" style={{ marginTop: 12 }}>
-            This balance will serve as the starting book value for the selected cell or combined fund.
+            This balance serves as the starting record of past offerings for the selected cell or combined fund.
           </div>
           <div className="flex gap-2" style={{ marginTop: 12 }}>
             <Btn style={{ flex: 1 }} onClick={saveOpeningBalance}>Save balance</Btn>
