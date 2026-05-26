@@ -433,3 +433,23 @@ export async function deleteExpense(id: string) {
   revalidatePath("/");
   return expense;
 }
+
+export async function addPledgeEvent(data: { name: string; description?: string }) {
+  const event = await prisma.pledgeEvent.create({
+    data: {
+      name: data.name,
+      description: data.description || null,
+    },
+  });
+  revalidatePath("/");
+  return event;
+}
+
+export async function deletePledgeEvent(id: string) {
+  const event = await prisma.pledgeEvent.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return event;
+}
+

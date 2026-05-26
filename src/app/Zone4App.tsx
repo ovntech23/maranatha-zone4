@@ -23,7 +23,10 @@ import {
   deletePledge,
   updateExpense,
   deleteExpense,
+  addPledgeEvent,
+  deletePledgeEvent,
 } from "@/app/actions";
+
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
 const fmtDate = (d: any) => {
@@ -896,11 +899,14 @@ interface FinanceProps {
   setExpenses: React.Dispatch<React.SetStateAction<any[]>>;
   openingBalances: any[];
   setOpeningBalances: React.Dispatch<React.SetStateAction<any[]>>;
+  pledgeEvents: any[];
+  setPledgeEvents: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 // ─── Finance Page ────────────────────────────────────────────────────────
-const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOfferings, pledges, setPledges, expenses, setExpenses, openingBalances, setOpeningBalances }) => {
+const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOfferings, pledges, setPledges, expenses, setExpenses, openingBalances, setOpeningBalances, pledgeEvents, setPledgeEvents }) => {
   const [tab, setTab] = useState("offerings");
+
   const [showModal, setShowModal] = useState(false);
   const [showOpeningModal, setShowOpeningModal] = useState(false);
 
@@ -911,6 +917,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const [pledgeForm, setPledgeForm] = useState({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
   const [expForm, setExpForm] = useState({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" });
   const [openingForm, setOpeningForm] = useState({ cell: "A", amount: "" });
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [eventForm, setEventForm] = useState({ name: "", description: "" });
 
   const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
   const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
@@ -1008,11 +1016,30 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     setShowOpeningModal(false);
   };
 
+  const savePledgeEvent = async () => {
+    if (!eventForm.name.trim()) return;
+    const created = await addPledgeEvent(eventForm);
+    setPledgeEvents(prev => [...prev, created]);
+    setEventForm({ name: "", description: "" });
+  };
+
+  const handleDeletePledgeEvent = async (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete the event "${name}"? Existing pledges towards this event will remain, but you won't be able to select it for new pledges.`)) {
+      await deletePledgeEvent(id);
+      setPledgeEvents(prev => prev.filter(x => x.id !== id));
+    }
+  };
+
   return (
     <div>
       <div className="finance__header">
         <h2 className="finance__title">Finances</h2>
         <div className="flex gap-2">
+          {tab === "pledges" && (
+            <Btn size="sm" variant="ghost" onClick={() => setShowEventModal(true)}>
+              ⚙ Manage Pledge Events
+            </Btn>
+          )}
           <Btn size="sm" variant="ghost" onClick={() => setShowOpeningModal(true)}>
             ⚙ Set past offerings (opening)
           </Btn>
@@ -1290,15 +1317,15 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                   onChange={e => setPledgeForm({ ...pledgeForm, eventName: e.target.value })}
                 >
                   <option value="">— Select Event Category —</option>
-                  <option value="Easter Fundraiser">Easter Fundraiser</option>
-                  <option value="Building Project Fund">Building Project Fund</option>
-                  <option value="Harvest Offering Fund">Harvest Offering Fund</option>
-                  <option value="Christmas Charity Fund">Christmas Charity Fund</option>
-                  <option value="Youth Ministry Camp Fund">Youth Ministry Camp Fund</option>
-                  <option value="Zone 4 Combined Conference">Zone 4 Combined Conference</option>
-                  <option value="Special Thanksgiving Event">Special Thanksgiving Event</option>
-                  <option value="Other Church Event">Other Church Event</option>
+                  {pledgeEvents.map(pe => (
+                    <option key={pe.id} value={pe.name}>{pe.name}</option>
+                  ))}
                 </select>
+                {pledgeEvents.length === 0 && (
+                  <span className="text-xs" style={{ color: "var(--coral)", marginTop: 4, display: "block" }}>
+                    ⚠️ No events configured. Please configure an event first.
+                  </span>
+                )}
               </div>
               <div>
                 <div className="field-label">Cell</div>
@@ -1396,6 +1423,81 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
           </div>
         </Modal>
       )}
+
+      {showEventModal && (
+        <Modal title="Manage Pledge Events" onClose={() => setShowEventModal(false)}>
+          <div className="flex flex-col gap-4">
+            <Card style={{ padding: "16px", background: "var(--bg-secondary)" }}>
+              <div className="font-bold text-sm" style={{ marginBottom: "12px", color: "var(--text-primary)" }}>Add New Pledge Event</div>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="field-label" style={{ fontSize: "12px", marginBottom: "4px" }}>Event Name</div>
+                  <input 
+                    className="input" 
+                    value={eventForm.name} 
+                    onChange={e => setEventForm({ ...eventForm, name: e.target.value })} 
+                    placeholder="e.g. Building Expansion Fund" 
+                  />
+                </div>
+                <div>
+                  <div className="field-label" style={{ fontSize: "12px", marginBottom: "4px" }}>Description (optional)</div>
+                  <input 
+                    className="input" 
+                    value={eventForm.description} 
+                    onChange={e => setEventForm({ ...eventForm, description: e.target.value })} 
+                    placeholder="e.g. Funding the new classroom wings" 
+                  />
+                </div>
+                <Btn onClick={savePledgeEvent} size="sm">Create Event</Btn>
+              </div>
+            </Card>
+
+            <div>
+              <div className="font-bold text-sm" style={{ marginBottom: "10px", color: "var(--text-primary)" }}>Existing Pledge Events</div>
+              <div style={{ maxHeight: "250px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                <table className="table" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th>Event Name</th>
+                      <th>Description</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pledgeEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="text-center py-4" style={{ color: "var(--text-secondary)" }}>
+                          No custom events configured.
+                        </td>
+                      </tr>
+                    ) : (
+                      pledgeEvents.map(pe => (
+                        <tr key={pe.id}>
+                          <td><span className="font-bold">{pe.name}</span></td>
+                          <td><span className="text-xs" style={{ color: "var(--text-secondary)" }}>{pe.description || "—"}</span></td>
+                          <td className="text-right">
+                            <Btn 
+                              variant="danger" 
+                              size="xs" 
+                              onClick={() => handleDeletePledgeEvent(pe.id, pe.name)}
+                            >
+                              Delete
+                            </Btn>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex gap-2" style={{ marginTop: "8px" }}>
+              <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowEventModal(false)}>Close</Btn>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1409,6 +1511,7 @@ interface Zone4AppProps {
   initialExpenses: any[];
   initialOpeningBalances: any[];
   initialSundaySchoolChildren: any[];
+  initialPledgeEvents: any[];
   userSession?: {
     name: string;
     email: string;
@@ -1426,6 +1529,7 @@ export default function Zone4App({
   initialExpenses,
   initialOpeningBalances,
   initialSundaySchoolChildren,
+  initialPledgeEvents,
   userSession,
 }: Zone4AppProps) {
   const [page, setPage] = useState("dashboard");
@@ -1437,6 +1541,7 @@ export default function Zone4App({
   const [expenses, setExpenses] = useState(initialExpenses);
   const [openingBalances, setOpeningBalances] = useState(initialOpeningBalances);
   const [sundaySchoolChildren, setSundaySchoolChildren] = useState(initialSundaySchoolChildren);
+  const [pledgeEvents, setPledgeEvents] = useState(initialPledgeEvents);
 
   const props = {
     members,
@@ -1455,7 +1560,10 @@ export default function Zone4App({
     setOpeningBalances,
     sundaySchoolChildren,
     setSundaySchoolChildren,
+    pledgeEvents,
+    setPledgeEvents,
   };
+
 
   const nav = [
     { key: "dashboard", label: "Dashboard" },

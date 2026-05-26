@@ -48,6 +48,11 @@ export default async function Page() {
     orderBy: { name: "asc" },
   });
 
+  const pledgeEvents = await prisma.pledgeEvent.findMany({
+    orderBy: { name: "asc" },
+  });
+
+
   // Serialize records to plain JSON types (Date -> ISO String)
   const serializedMembers = members.map((m) => ({
     id: m.id,
@@ -118,6 +123,13 @@ export default async function Page() {
     status: c.status,
   }));
 
+  const serializedPledgeEvents = pledgeEvents.map((pe) => ({
+    id: pe.id,
+    name: pe.name,
+    description: pe.description || "",
+  }));
+
+
   return (
     <Zone4App
       initialMembers={serializedMembers}
@@ -128,6 +140,7 @@ export default async function Page() {
       initialExpenses={serializedExpenses}
       initialOpeningBalances={serializedOpeningBalances}
       initialSundaySchoolChildren={serializedSundaySchoolChildren}
+      initialPledgeEvents={serializedPledgeEvents}
       userSession={userSession}
     />
   );

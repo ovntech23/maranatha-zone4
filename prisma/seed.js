@@ -91,6 +91,17 @@ const SEED_CHILDREN = [
   { id: 4, name: "Kondwani Mulenga", cell: "B", gender: "Male", age: 5, parentName: "Mary Mulenga", parentPhone: "097-111-0007", status: "Active" },
 ];
 
+const SEED_PLEDGE_EVENTS = [
+  { name: "Easter Fundraiser", description: "Easter celebration charity fundraiser" },
+  { name: "Building Project Fund", description: "Building expansion and maintenance project" },
+  { name: "Harvest Offering Fund", description: "Annual harvest thanksgiving celebration" },
+  { name: "Christmas Charity Fund", description: "Christmas food hampers and community outreach" },
+  { name: "Youth Ministry Camp Fund", description: "Supporting youth camp event transport and lodging" },
+  { name: "Zone 4 Combined Conference", description: "Zone combined annual conference and teaching seminar" },
+  { name: "Special Thanksgiving Event", description: "Thanking God for his faithfulness in Zone 4" },
+  { name: "Other Church Event", description: "General categories for unplanned activities" }
+];
+
 function makeMemberId(num) {
   return `00000000-0000-0000-0000-${num.toString().padStart(12, "0")}`;
 }
@@ -118,6 +129,7 @@ async function main() {
   await prisma.attendance.deleteMany();
   await prisma.offering.deleteMany();
   await prisma.pledge.deleteMany();
+  await prisma.pledgeEvent.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.meeting.deleteMany();
   await prisma.member.deleteMany();
@@ -239,6 +251,17 @@ async function main() {
     });
   }
   console.log("Seeded Sunday School children.");
+
+  // Seed Pledge Events
+  for (const pe of SEED_PLEDGE_EVENTS) {
+    await prisma.pledgeEvent.create({
+      data: {
+        name: pe.name,
+        description: pe.description,
+      },
+    });
+  }
+  console.log("Seeded pledge events.");
 
   console.log("Database seeding completed successfully!");
 }

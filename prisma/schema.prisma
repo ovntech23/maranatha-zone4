@@ -117,3 +117,12 @@ model SundaySchoolChild {
   updatedAt   DateTime @updatedAt
 }
 
+model PledgeEvent {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
