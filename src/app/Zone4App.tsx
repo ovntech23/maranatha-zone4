@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   addMember,
   toggleMemberStatus,
@@ -93,13 +93,15 @@ interface BtnProps {
   className?: string;
   active?: boolean;
   style?: React.CSSProperties;
+  disabled?: boolean;
 }
 
-const Btn: React.FC<BtnProps> = ({ children, onClick, variant = "primary", size = "md", className = "", active, style }) => (
+const Btn: React.FC<BtnProps> = ({ children, onClick, variant = "primary", size = "md", className = "", active, style, disabled }) => (
   <button 
     onClick={onClick} 
     className={`btn btn--${variant} btn--${size} ${active ? `btn--tab--active` : ""} ${className}`}
-    style={style}
+    style={{ ...style, ...(disabled ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}
+    disabled={disabled}
   >
     {children}
   </button>
@@ -123,6 +125,39 @@ const Modal: React.FC<ModalProps> = ({ title, onClose, children }) => (
   </div>
 );
 
+function usePagination<T>(items: T[], itemsPerPage: number = 10) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+  
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    } else if (currentPage === 0 && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [items.length, totalPages, currentPage]);
+
+  const paginatedItems = items.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  return { currentPage, setCurrentPage, totalPages, paginatedItems };
+}
+
+interface PaginationProps {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}
+
+const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination">
+      <Btn variant="ghost" size="sm" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</Btn>
+      <span className="pagination__info">Page {currentPage} of {totalPages}</span>
+      <Btn variant="ghost" size="sm" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</Btn>
+    </div>
+  );
+};
 
 interface DashboardProps {
   members: any[];
@@ -299,7 +334,8 @@ function Members({ members, setMembers }: MembersProps) {
     return true;
   });
   const hasFilters = filter !== "All" || statusFilter !== "All" || roleFilter !== "All" || genderFilter !== "All" || search !== "";
-  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setRoleFilter("All"); setGenderFilter("All"); setSearch(""); };
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(filtered, 20);
+  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setRoleFilter("All"); setGenderFilter("All"); setSearch(""); setCurrentPage(1); };
   const roleVariant = { Member: "", Elder: "gold", Deacon: "green", Treasurer: "gold", Secretary: "purple", "Youth Leader": "accent", "Cell Leader": "green", "Women's Chairlady": "purple", "Zone Pastor": "accent" };
 
   const save = async () => {
@@ -358,7 +394,7 @@ function Members({ members, setMembers }: MembersProps) {
               <tr><th>Name</th><th>Cell</th><th>Role</th><th>Phone</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-              {filtered.map(m => (
+              {paginatedItems.map(m => (
                 <tr key={m.id}>
                   <td><span className="font-bold">{m.name}</span></td>
                   <td><Badge label={`Cell ${m.cell}`} variant={m.cell === "A" ? "purple" : "green"} /></td>
@@ -407,6 +443,7 @@ function Members({ members, setMembers }: MembersProps) {
             </tbody>
           </table>
         </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </Card>
 
       {showModal && (
@@ -500,7 +537,8 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
     return true;
   });
   const hasFilters = filter !== "All" || statusFilter !== "All" || genderFilter !== "All" || search !== "";
-  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setGenderFilter("All"); setSearch(""); };
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(filtered, 20);
+  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setGenderFilter("All"); setSearch(""); setCurrentPage(1); };
 
   const save = async () => {
     if (!form.name.trim()) return;
@@ -585,7 +623,7 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
                   </td>
                 </tr>
               )}
-              {filtered.map(c => (
+              {paginatedItems.map(c => (
                 <tr key={c.id}>
                   <td><span className="font-bold">{c.name}</span></td>
                   <td><Badge label={`Cell ${c.cell}`} variant={c.cell === "A" ? "purple" : "green"} /></td>
@@ -636,6 +674,7 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
             </tbody>
           </table>
         </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </Card>
 
       {showModal && (
@@ -1036,7 +1075,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     return true;
   });
   const offHasFilters = offCellFilter !== "All" || offSearch !== "";
-  const clearOffFilters = () => { setOffCellFilter("All"); setOffSearch(""); };
+  const { currentPage: offPage, setCurrentPage: setOffPage, totalPages: offTotalPages, paginatedItems: paginatedOfferings } = usePagination(filteredOfferings, 20);
+  const clearOffFilters = () => { setOffCellFilter("All"); setOffSearch(""); setOffPage(1); };
 
   const pq = pledgeSearch.toLowerCase().trim();
   const filteredPledges = pledges.filter(p => {
@@ -1051,7 +1091,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     return true;
   });
   const pledgeHasFilters = pledgeCellFilter !== "All" || pledgeEventFilter !== "All" || pledgeStatusFilter !== "All" || pledgeSearch !== "";
-  const clearPledgeFilters = () => { setPledgeCellFilter("All"); setPledgeEventFilter("All"); setPledgeStatusFilter("All"); setPledgeSearch(""); };
+  const { currentPage: pledgePage, setCurrentPage: setPledgePage, totalPages: pledgeTotalPages, paginatedItems: paginatedPledges } = usePagination(filteredPledges, 20);
+  const clearPledgeFilters = () => { setPledgeCellFilter("All"); setPledgeEventFilter("All"); setPledgeStatusFilter("All"); setPledgeSearch(""); setPledgePage(1); };
   const uniqueEvents = [...new Set(pledges.map(p => p.eventName).filter(Boolean))];
 
   const eq = expSearch.toLowerCase().trim();
@@ -1064,7 +1105,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
     return true;
   });
   const expHasFilters = expCellFilter !== "All" || expCategoryFilter !== "All" || expDateFrom !== "" || expDateTo !== "" || expSearch !== "";
-  const clearExpFilters = () => { setExpCellFilter("All"); setExpCategoryFilter("All"); setExpDateFrom(""); setExpDateTo(""); setExpSearch(""); };
+  const { currentPage: expPage, setCurrentPage: setExpPage, totalPages: expTotalPages, paginatedItems: paginatedExpenses } = usePagination(filteredExpenses, 20);
+  const clearExpFilters = () => { setExpCellFilter("All"); setExpCategoryFilter("All"); setExpDateFrom(""); setExpDateTo(""); setExpSearch(""); setExpPage(1); };
 
   const saveOffering = async () => {
     if (!offForm.meetingId || !offForm.amount) return;
@@ -1221,7 +1263,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     </tr>
                   );
                 })}
-                {filteredOfferings.map(o => (
+                {paginatedOfferings.map(o => (
                   <tr key={o.id}>
                     <td>{getMtgLabel(o.meetingId)}</td>
                     <td className="mono finance__amount--positive">{fmt(o.amount)}</td>
@@ -1238,6 +1280,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
               </tbody>
             </table>
           </div>
+          <Pagination currentPage={offPage} totalPages={offTotalPages} onPageChange={setOffPage} />
         </Card>
         </>
       )}
@@ -1324,7 +1367,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <table className="table">
                   <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    {filteredPledges.map(p => {
+                    {paginatedPledges.map(p => {
                       const pct = p.pledgeAmount ? Math.round((p.paidAmount / p.pledgeAmount) * 100) : 0;
                       return (
                         <tr key={p.id}>
@@ -1353,6 +1396,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                   </tbody>
                 </table>
               </div>
+              <Pagination currentPage={pledgePage} totalPages={pledgeTotalPages} onPageChange={setPledgePage} />
             </Card>
           </div>
         </div>
@@ -1392,7 +1436,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             <table className="table">
               <thead><tr><th>Date</th><th>Cell</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved by</th><th></th></tr></thead>
               <tbody>
-                {filteredExpenses.map(e => (
+                {paginatedExpenses.map(e => (
                   <tr key={e.id}>
                     <td><span className="finance__note text-sm">{fmtDate(e.date)}</span></td>
                     <td><Badge label={e.cell === "Zone" ? "Zone" : `Cell ${e.cell}`} variant={e.cell === "Zone" ? "accent" : (e.cell === "A" ? "purple" : "green")} /></td>
@@ -1411,6 +1455,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
               </tbody>
             </table>
           </div>
+          <Pagination currentPage={expPage} totalPages={expTotalPages} onPageChange={setExpPage} />
         </Card>
         </>
       )}
