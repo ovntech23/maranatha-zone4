@@ -141,10 +141,11 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
   const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
   const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
 
-  const totalOffering = offerings.reduce((s, o) => s + o.amount, 0);
+  const totalCurrentOffering = offerings.reduce((s, o) => s + o.amount, 0);
+  const totalOffering = totalOpening + totalCurrentOffering;
   const totalPledgePaid = pledges.reduce((s, p) => s + p.paidAmount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const balance = totalOpening + totalOffering + totalPledgePaid - totalExpenses;
+  const balance = totalOffering + totalPledgePaid - totalExpenses;
 
   const avgAtt = (cell) => {
     const cm = meetings.filter(m => m.cell === cell);
@@ -188,7 +189,6 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
       </div>
 
       <div className="dashboard__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <Stat label="Past Offerings (Opening)" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
@@ -923,10 +923,11 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
   const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
 
-  const totalOffering = offerings.reduce((s, o) => s + o.amount, 0);
+  const totalCurrentOffering = offerings.reduce((s, o) => s + o.amount, 0);
+  const totalOffering = totalOpening + totalCurrentOffering;
   const totalPledgePaid = pledges.reduce((s, p) => s + p.paidAmount, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const balance = totalOpening + totalOffering + totalPledgePaid - totalExpenses;
+  const balance = totalOffering + totalPledgePaid - totalExpenses;
 
   const financeEventPledges = (Object.values(
     pledges.reduce((acc, p) => {
@@ -1041,7 +1042,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </Btn>
           )}
           <Btn size="sm" variant="ghost" onClick={() => setShowOpeningModal(true)}>
-            ⚙ Set past offerings (opening)
+            ⚙ Set opening offerings
           </Btn>
           <Btn size="sm" onClick={() => setShowModal(true)}>
             + Record {tab === "offerings" ? "offering" : tab === "pledges" ? "pledge" : "expense"}
@@ -1050,8 +1051,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       </div>
 
       <div className="finance__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-        <Stat label="Past Offerings (Opening)" value={fmt(totalOpening)} variant="purple" />
         <Stat label="Total offerings" value={fmt(totalOffering)} variant="green" />
+        <Stat label="  of which: current" value={fmt(totalCurrentOffering)} variant="purple" />
         <Stat label="Pledge receipts" value={fmt(totalPledgePaid)} variant="gold" />
         <Stat label="Expenses" value={fmt(totalExpenses)} variant="coral" />
         <Stat label="Balance" value={fmt(balance)} variant={balance >= 0 ? "green" : "coral"} />
@@ -1067,8 +1068,27 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div className="overflow-x-auto">
             <table className="table">
-              <thead><tr><th>Meeting</th><th>Amount (ZMW)</th><th>Collector</th><th>Notes</th><th></th></tr></thead>
+              <thead><tr><th>Meeting / Source</th><th>Amount (ZMW)</th><th>Collector</th><th>Notes</th><th></th></tr></thead>
               <tbody>
+                {/* Opening / Past Offering rows – one per cell that has a balance set */}
+                {(["A", "B", "Zone"] as const).map(cell => {
+                  const amt = getOpeningBalance(cell);
+                  if (!amt) return null;
+                  return (
+                    <tr key={`opening-${cell}`} style={{ background: "var(--bg-secondary)", opacity: 0.85 }}>
+                      <td>
+                        <Badge label={cell === "Zone" ? "Zone" : `Cell ${cell}`} variant={cell === "Zone" ? "accent" : cell === "A" ? "purple" : "green"} />
+                        <span className="text-xs" style={{ marginLeft: 8, color: "var(--text-secondary)" }}>Opening / Past Offerings</span>
+                      </td>
+                      <td className="mono finance__amount--positive">{fmt(amt)}</td>
+                      <td><span className="text-xs" style={{ color: "var(--text-secondary)" }}>Historical</span></td>
+                      <td className="finance__note">Carried forward</td>
+                      <td className="text-right">
+                        <Btn variant="ghost" size="sm" onClick={() => setShowOpeningModal(true)}>Edit</Btn>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {offerings.map(o => (
                   <tr key={o.id}>
                     <td>{getMtgLabel(o.meetingId)}</td>
@@ -1424,7 +1444,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       )}
 
       {showOpeningModal && (
-        <Modal title="Set Past Offerings (Opening Balance)" onClose={() => setShowOpeningModal(false)}>
+        <Modal title="Set Opening Offerings" onClose={() => setShowOpeningModal(false)}>
           <div>
             <div className="field-label">Cell / Fund Scope</div>
             <select className="select" value={openingForm.cell} onChange={e => setOpeningForm({ ...openingForm, cell: e.target.value })}>
@@ -1434,7 +1454,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </select>
           </div>
           <div>
-            <div className="field-label">Past Offerings Amount (ZMW)</div>
+            <div className="field-label">Opening Offerings Amount (ZMW)</div>
             <input 
               className="input" 
               type="number" 
@@ -1445,10 +1465,16 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             />
           </div>
           <div className="info-box" style={{ marginTop: 12 }}>
-            This balance serves as the starting record of past offerings for the selected cell or combined fund.
+            These are past/historical offerings recorded before this system was in use. They are added to the current offerings total automatically.
+            <br /><br />
+            <strong>Current opening amounts:</strong><br />
+            Cell A: {fmt(getOpeningBalance("A"))}<br />
+            Cell B: {fmt(getOpeningBalance("B"))}<br />
+            Zone: {fmt(getOpeningBalance("Zone"))}<br />
+            <strong>Total: {fmt(totalOpening)}</strong>
           </div>
           <div className="flex gap-2" style={{ marginTop: 12 }}>
-            <Btn style={{ flex: 1 }} onClick={saveOpeningBalance}>Save balance</Btn>
+            <Btn style={{ flex: 1 }} onClick={saveOpeningBalance}>Save</Btn>
             <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowOpeningModal(false)}>Cancel</Btn>
           </div>
         </Modal>
