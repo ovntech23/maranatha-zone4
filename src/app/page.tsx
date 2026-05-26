@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const session = await getSession();
-  let userSession = null;
+  let userSession: { name: string; email: string; role: string } | null = null;
   if (session) {
     const dbUser = await prisma.user.findUnique({
       where: { id: session.userId },

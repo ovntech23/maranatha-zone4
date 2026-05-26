@@ -61,7 +61,7 @@ export async function addSundaySchoolChild(data: {
       name: data.name,
       cell: data.cell,
       gender: data.gender,
-      age: data.age !== undefined && data.age !== null && data.age !== "" ? Number(data.age) : null,
+      age: data.age !== undefined && data.age !== null ? Number(data.age) : null,
       parentName: data.parentName || null,
       parentPhone: data.parentPhone || null,
       status: data.status,

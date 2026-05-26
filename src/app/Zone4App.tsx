@@ -554,7 +554,7 @@ const Attendance: React.FC<AttendanceProps> = ({ members, meetings, setMeetings,
     // Format meeting date correctly for standard JS UI string comparison
     const dateStr = created.date instanceof Date
       ? created.date.toISOString().slice(0, 10)
-      : (typeof created.date === "string" ? created.date.slice(0, 10) : "");
+      : typeof (created.date as any) === "string" ? (created.date as any).slice(0, 10) : "";
 
     const formattedMeeting = {
       ...created,

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { decrypt } from "@/lib/session";
+import { decrypt, type SessionPayload } from "@/lib/session";
 
 const AUTH_ROUTES = ["/login"];
 
@@ -11,7 +11,7 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get("session")?.value;
 
   // 2. Try to decrypt/verify it
-  let session = null;
+  let session: SessionPayload | null = null;
   if (sessionToken) {
     session = await decrypt(sessionToken);
   }
