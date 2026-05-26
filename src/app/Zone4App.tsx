@@ -1322,36 +1322,45 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             <>
               <div>
                 <div className="field-label">Event name</div>
-                <select 
-                  className="select" 
+                <input 
+                  list="pledge-event-options"
+                  className="input" 
                   value={pledgeForm.eventName} 
                   onChange={e => setPledgeForm({ ...pledgeForm, eventName: e.target.value })}
-                >
-                  <option value="">— Select Event Category —</option>
+                  placeholder="Select or type event name..."
+                />
+                <datalist id="pledge-event-options">
                   {pledgeEvents.map(pe => (
-                    <option key={pe.id} value={pe.name}>{pe.name}</option>
+                    <option key={pe.id} value={pe.name} />
                   ))}
-                </select>
-                {pledgeEvents.length === 0 && (
-                  <span className="text-xs" style={{ color: "var(--coral)", marginTop: 4, display: "block" }}>
-                    ⚠️ No events configured. Please configure an event first.
-                  </span>
-                )}
+                </datalist>
               </div>
               <div>
                 <div className="field-label">Cell</div>
-                <select className="select" value={pledgeForm.cell} onChange={e => setPledgeForm({ ...pledgeForm, cell: e.target.value })}>
+                <select 
+                  className="select" 
+                  value={pledgeForm.cell} 
+                  onChange={e => setPledgeForm({ ...pledgeForm, cell: e.target.value, memberId: "" })}
+                >
                   <option value="A">Cell A</option>
                   <option value="B">Cell B</option>
+                  <option value="Zone">Zone (Combined)</option>
                 </select>
               </div>
               <div>
                 <div className="field-label">Member</div>
-                <select className="select" value={pledgeForm.memberId} onChange={e => setPledgeForm({ ...pledgeForm, memberId: e.target.value })}>
+                <select 
+                  className="select" 
+                  value={pledgeForm.memberId} 
+                  onChange={e => setPledgeForm({ ...pledgeForm, memberId: e.target.value })}
+                >
                   <option value="">— Select member —</option>
-                  {members.filter(m => m.cell === pledgeForm.cell && m.status === "Active").map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
+                  {members
+                    .filter(m => (pledgeForm.cell === "Zone" ? true : m.cell === pledgeForm.cell) && m.status === "Active")
+                    .map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))
+                  }
                 </select>
               </div>
               <div>
