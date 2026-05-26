@@ -282,10 +282,24 @@ interface MembersProps {
 function Members({ members, setMembers }: MembersProps) {
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [roleFilter, setRoleFilter] = useState("All");
+  const [genderFilter, setGenderFilter] = useState("All");
   const [form, setForm] = useState({ name: "", cell: "A", role: "Member", phone: "", status: "Active", gender: "Female" });
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
 
-  const filtered = members.filter(m => filter === "All" || m.cell === filter);
+  const q = search.toLowerCase().trim();
+  const filtered = members.filter(m => {
+    if (filter !== "All" && m.cell !== filter) return false;
+    if (statusFilter !== "All" && m.status !== statusFilter) return false;
+    if (roleFilter !== "All" && m.role !== roleFilter) return false;
+    if (genderFilter !== "All" && m.gender !== genderFilter) return false;
+    if (q && !(m.name?.toLowerCase().includes(q) || m.phone?.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const hasFilters = filter !== "All" || statusFilter !== "All" || roleFilter !== "All" || genderFilter !== "All" || search !== "";
+  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setRoleFilter("All"); setGenderFilter("All"); setSearch(""); };
   const roleVariant = { Member: "", Elder: "gold", Deacon: "green", Treasurer: "gold", Secretary: "purple", "Youth Leader": "accent", "Cell Leader": "green", "Women's Chairlady": "purple", "Zone Pastor": "accent" };
 
   const save = async () => {
@@ -306,14 +320,35 @@ function Members({ members, setMembers }: MembersProps) {
     <div>
       <div className="members__header">
         <h2 className="members__title">Members</h2>
-        <div className="members__filters">
-          {["All", "A", "B"].map(f => (
-            <Btn key={f} variant={filter === f ? "primary" : "ghost"} size="sm" onClick={() => setFilter(f)}>
-              {f === "All" ? "All cells" : `Cell ${f}`}
-            </Btn>
-          ))}
-          <Btn size="sm" onClick={() => setShowModal(true)}>+ Add member</Btn>
+        <Btn size="sm" onClick={() => setShowModal(true)}>+ Add member</Btn>
+      </div>
+
+      <div className="search-toolbar">
+        <div className="search-toolbar__input-wrap">
+          <span className="search-toolbar__icon">🔍</span>
+          <input className="search-toolbar__input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name or phone..." />
         </div>
+        <select className="search-toolbar__filter" value={filter} onChange={e => setFilter(e.target.value)}>
+          <option value="All">All Cells</option>
+          <option value="A">Cell A</option>
+          <option value="B">Cell B</option>
+        </select>
+        <select className="search-toolbar__filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <select className="search-toolbar__filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+          <option value="All">All Roles</option>
+          {["Member", "Elder", "Deacon", "Treasurer", "Secretary", "Youth Leader", "Cell Leader", "Women's Chairlady", "Zone Pastor"].map(r => <option key={r}>{r}</option>)}
+        </select>
+        <select className="search-toolbar__filter" value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
+          <option value="All">All Genders</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+        {hasFilters && <button className="search-toolbar__clear" onClick={clearFilters}>✕ Clear</button>}
+        <span className="search-toolbar__results">{filtered.length} of {members.length}</span>
       </div>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -442,6 +477,9 @@ interface SundaySchoolProps {
 function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundaySchoolProps) {
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [genderFilter, setGenderFilter] = useState("All");
   const [form, setForm] = useState({
     name: "",
     cell: "A",
@@ -453,7 +491,16 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
   });
   const [editingChildId, setEditingChildId] = useState<string | null>(null);
 
-  const filtered = sundaySchoolChildren.filter(c => filter === "All" || c.cell === filter);
+  const q = search.toLowerCase().trim();
+  const filtered = sundaySchoolChildren.filter(c => {
+    if (filter !== "All" && c.cell !== filter) return false;
+    if (statusFilter !== "All" && c.status !== statusFilter) return false;
+    if (genderFilter !== "All" && c.gender !== genderFilter) return false;
+    if (q && !(c.name?.toLowerCase().includes(q) || c.parentName?.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const hasFilters = filter !== "All" || statusFilter !== "All" || genderFilter !== "All" || search !== "";
+  const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setGenderFilter("All"); setSearch(""); };
 
   const save = async () => {
     if (!form.name.trim()) return;
@@ -488,14 +535,31 @@ function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundayS
     <div>
       <div className="members__header">
         <h2 className="members__title">Sunday School Children</h2>
-        <div className="members__filters">
-          {["All", "A", "B"].map(f => (
-            <Btn key={f} variant={filter === f ? "primary" : "ghost"} size="sm" onClick={() => setFilter(f)}>
-              {f === "All" ? "All cells" : `Cell ${f}`}
-            </Btn>
-          ))}
-          <Btn size="sm" onClick={() => setShowModal(true)}>+ Add child</Btn>
+        <Btn size="sm" onClick={() => setShowModal(true)}>+ Add child</Btn>
+      </div>
+
+      <div className="search-toolbar">
+        <div className="search-toolbar__input-wrap">
+          <span className="search-toolbar__icon">🔍</span>
+          <input className="search-toolbar__input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by child or parent name..." />
         </div>
+        <select className="search-toolbar__filter" value={filter} onChange={e => setFilter(e.target.value)}>
+          <option value="All">All Cells</option>
+          <option value="A">Cell A</option>
+          <option value="B">Cell B</option>
+        </select>
+        <select className="search-toolbar__filter" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+        <select className="search-toolbar__filter" value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
+          <option value="All">All Genders</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+        {hasFilters && <button className="search-toolbar__clear" onClick={clearFilters}>✕ Clear</button>}
+        <span className="search-toolbar__results">{filtered.length} of {sundaySchoolChildren.length}</span>
       </div>
 
       <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -920,6 +984,19 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const [showEventModal, setShowEventModal] = useState(false);
   const [eventForm, setEventForm] = useState({ name: "", description: "" });
 
+  // ─── Search & Filter state ────────
+  const [offSearch, setOffSearch] = useState("");
+  const [offCellFilter, setOffCellFilter] = useState("All");
+  const [pledgeSearch, setPledgeSearch] = useState("");
+  const [pledgeCellFilter, setPledgeCellFilter] = useState("All");
+  const [pledgeEventFilter, setPledgeEventFilter] = useState("All");
+  const [pledgeStatusFilter, setPledgeStatusFilter] = useState("All");
+  const [expSearch, setExpSearch] = useState("");
+  const [expCellFilter, setExpCellFilter] = useState("All");
+  const [expCategoryFilter, setExpCategoryFilter] = useState("All");
+  const [expDateFrom, setExpDateFrom] = useState("");
+  const [expDateTo, setExpDateTo] = useState("");
+
   const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
   const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
 
@@ -948,7 +1025,46 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   }));
 
   const getMtgLabel = id => { const m = meetings.find(x => x.id == id); return m ? `Cell ${m.cell} · ${fmtDate(m.date)}` : "—"; };
+  const getMtgCell = id => meetings.find(x => x.id == id)?.cell || "";
   const getMemberName = id => members.find(m => m.id == id)?.name || "—";
+
+  // ─── Filtered data ────────
+  const oq = offSearch.toLowerCase().trim();
+  const filteredOfferings = offerings.filter(o => {
+    if (offCellFilter !== "All" && getMtgCell(o.meetingId) !== offCellFilter) return false;
+    if (oq && !(o.collector?.toLowerCase().includes(oq) || o.notes?.toLowerCase().includes(oq))) return false;
+    return true;
+  });
+  const offHasFilters = offCellFilter !== "All" || offSearch !== "";
+  const clearOffFilters = () => { setOffCellFilter("All"); setOffSearch(""); };
+
+  const pq = pledgeSearch.toLowerCase().trim();
+  const filteredPledges = pledges.filter(p => {
+    if (pledgeCellFilter !== "All" && p.cell !== pledgeCellFilter) return false;
+    if (pledgeEventFilter !== "All" && p.eventName !== pledgeEventFilter) return false;
+    if (pledgeStatusFilter !== "All") {
+      const pct = p.pledgeAmount ? Math.round((p.paidAmount / p.pledgeAmount) * 100) : 0;
+      if (pledgeStatusFilter === "Fulfilled" && pct < 100) return false;
+      if (pledgeStatusFilter === "Pending" && pct >= 100) return false;
+    }
+    if (pq && !(getMemberName(p.memberId).toLowerCase().includes(pq) || p.eventName?.toLowerCase().includes(pq) || p.jointNames?.toLowerCase().includes(pq))) return false;
+    return true;
+  });
+  const pledgeHasFilters = pledgeCellFilter !== "All" || pledgeEventFilter !== "All" || pledgeStatusFilter !== "All" || pledgeSearch !== "";
+  const clearPledgeFilters = () => { setPledgeCellFilter("All"); setPledgeEventFilter("All"); setPledgeStatusFilter("All"); setPledgeSearch(""); };
+  const uniqueEvents = [...new Set(pledges.map(p => p.eventName).filter(Boolean))];
+
+  const eq = expSearch.toLowerCase().trim();
+  const filteredExpenses = expenses.filter(e => {
+    if (expCellFilter !== "All" && e.cell !== expCellFilter) return false;
+    if (expCategoryFilter !== "All" && e.category !== expCategoryFilter) return false;
+    if (expDateFrom && e.date < expDateFrom) return false;
+    if (expDateTo && e.date > expDateTo) return false;
+    if (eq && !(e.description?.toLowerCase().includes(eq) || e.approvedBy?.toLowerCase().includes(eq))) return false;
+    return true;
+  });
+  const expHasFilters = expCellFilter !== "All" || expCategoryFilter !== "All" || expDateFrom !== "" || expDateTo !== "" || expSearch !== "";
+  const clearExpFilters = () => { setExpCellFilter("All"); setExpCategoryFilter("All"); setExpDateFrom(""); setExpDateTo(""); setExpSearch(""); };
 
   const saveOffering = async () => {
     if (!offForm.meetingId || !offForm.amount) return;
@@ -1065,15 +1181,31 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       </div>
 
       {tab === "offerings" && (
+        <>
+        <div className="search-toolbar">
+          <div className="search-toolbar__input-wrap">
+            <span className="search-toolbar__icon">🔍</span>
+            <input className="search-toolbar__input" value={offSearch} onChange={e => setOffSearch(e.target.value)} placeholder="Search by collector or notes..." />
+          </div>
+          <select className="search-toolbar__filter" value={offCellFilter} onChange={e => setOffCellFilter(e.target.value)}>
+            <option value="All">All Cells</option>
+            <option value="A">Cell A</option>
+            <option value="B">Cell B</option>
+            <option value="Zone">Zone</option>
+          </select>
+          {offHasFilters && <button className="search-toolbar__clear" onClick={clearOffFilters}>✕ Clear</button>}
+          <span className="search-toolbar__results">{filteredOfferings.length} of {offerings.length}</span>
+        </div>
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div className="overflow-x-auto">
             <table className="table">
               <thead><tr><th>Meeting / Source</th><th>Amount (ZMW)</th><th>Collector</th><th>Notes</th><th></th></tr></thead>
               <tbody>
-                {/* Opening / Past Offering rows – one per cell that has a balance set */}
+                {/* Opening / Past Offering rows */}
                 {(["A", "B", "Zone"] as const).map(cell => {
                   const amt = getOpeningBalance(cell);
                   if (!amt) return null;
+                  if (offCellFilter !== "All" && offCellFilter !== cell) return null;
                   return (
                     <tr key={`opening-${cell}`} style={{ background: "var(--bg-secondary)", opacity: 0.85 }}>
                       <td>
@@ -1089,7 +1221,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     </tr>
                   );
                 })}
-                {offerings.map(o => (
+                {filteredOfferings.map(o => (
                   <tr key={o.id}>
                     <td>{getMtgLabel(o.meetingId)}</td>
                     <td className="mono finance__amount--positive">{fmt(o.amount)}</td>
@@ -1097,29 +1229,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     <td className="finance__note">{o.notes || "—"}</td>
                     <td className="text-right">
                       <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
-                        <Btn 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            setOffForm({ meetingId: o.meetingId, amount: String(o.amount), collector: o.collector, notes: o.notes || "" });
-                            setEditingOfferingId(o.id);
-                            setShowModal(true);
-                          }}
-                        >
-                          Edit
-                        </Btn>
-                        <Btn 
-                          variant="danger" 
-                          size="sm" 
-                          onClick={async () => {
-                            if (confirm("Are you sure you want to delete this offering?")) {
-                              await deleteOffering(o.id);
-                              setOfferings(p => p.filter(x => x.id !== o.id));
-                            }
-                          }}
-                        >
-                          Delete
-                        </Btn>
+                        <Btn variant="ghost" size="sm" onClick={() => { setOffForm({ meetingId: o.meetingId, amount: String(o.amount), collector: o.collector, notes: o.notes || "" }); setEditingOfferingId(o.id); setShowModal(true); }}>Edit</Btn>
+                        <Btn variant="danger" size="sm" onClick={async () => { if (confirm("Are you sure you want to delete this offering?")) { await deleteOffering(o.id); setOfferings(p => p.filter(x => x.id !== o.id)); } }}>Delete</Btn>
                       </div>
                     </td>
                   </tr>
@@ -1128,9 +1239,34 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </table>
           </div>
         </Card>
+        </>
       )}
 
       {tab === "pledges" && (
+        <>
+        <div className="search-toolbar">
+          <div className="search-toolbar__input-wrap">
+            <span className="search-toolbar__icon">🔍</span>
+            <input className="search-toolbar__input" value={pledgeSearch} onChange={e => setPledgeSearch(e.target.value)} placeholder="Search by member, event, or joint names..." />
+          </div>
+          <select className="search-toolbar__filter" value={pledgeCellFilter} onChange={e => setPledgeCellFilter(e.target.value)}>
+            <option value="All">All Cells</option>
+            <option value="A">Cell A</option>
+            <option value="B">Cell B</option>
+            <option value="Zone">Zone</option>
+          </select>
+          <select className="search-toolbar__filter" value={pledgeEventFilter} onChange={e => setPledgeEventFilter(e.target.value)}>
+            <option value="All">All Events</option>
+            {uniqueEvents.map(ev => <option key={ev} value={ev}>{ev}</option>)}
+          </select>
+          <select className="search-toolbar__filter" value={pledgeStatusFilter} onChange={e => setPledgeStatusFilter(e.target.value)}>
+            <option value="All">All Status</option>
+            <option value="Fulfilled">Fulfilled</option>
+            <option value="Pending">Pending</option>
+          </select>
+          {pledgeHasFilters && <button className="search-toolbar__clear" onClick={clearPledgeFilters}>✕ Clear</button>}
+          <span className="search-toolbar__results">{filteredPledges.length} of {pledges.length}</span>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           {/* Pledge Summary by Event */}
           <div>
@@ -1180,7 +1316,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </Card>
           </div>
 
-          {/* Individual Member Pledges */}
+          {/* Individual Member Pledges — filtered */}
           <div>
             <div className="dashboard__section-title" style={{ marginBottom: 10 }}>Individual Pledges by Member</div>
             <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -1188,7 +1324,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <table className="table">
                   <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th><th></th></tr></thead>
                   <tbody>
-                    {pledges.map(p => {
+                    {filteredPledges.map(p => {
                       const pct = p.pledgeAmount ? Math.round((p.paidAmount / p.pledgeAmount) * 100) : 0;
                       return (
                         <tr key={p.id}>
@@ -1197,13 +1333,9 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                             {p.jointNames ? (
                               <div>
                                 <span className="font-bold">{p.jointNames}</span>
-                                <span className="text-xs block" style={{ color: "var(--text-secondary)" }}>
-                                  via {getMemberName(p.memberId)}
-                                </span>
+                                <span className="text-xs block" style={{ color: "var(--text-secondary)" }}>via {getMemberName(p.memberId)}</span>
                               </div>
-                            ) : (
-                              getMemberName(p.memberId)
-                            )}
+                            ) : getMemberName(p.memberId)}
                           </td>
                           <td><Badge label={`Cell ${p.cell}`} variant={p.cell === "A" ? "purple" : "green"} /></td>
                           <td className="mono">{fmt(p.pledgeAmount)}</td>
@@ -1211,29 +1343,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                           <td><Badge label={pct >= 100 ? "Fulfilled" : `${pct}%`} variant={pct >= 100 ? "green" : "gold"} /></td>
                           <td className="text-right">
                             <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
-                              <Btn 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={() => {
-                                  setPledgeForm({ eventName: p.eventName, cell: p.cell, memberId: p.memberId, pledgeAmount: String(p.pledgeAmount), paidAmount: String(p.paidAmount), jointNames: p.jointNames || "" });
-                                  setEditingPledgeId(p.id);
-                                  setShowModal(true);
-                                }}
-                              >
-                                Edit
-                              </Btn>
-                              <Btn 
-                                variant="danger" 
-                                size="sm" 
-                                onClick={async () => {
-                                  if (confirm("Are you sure you want to delete this pledge?")) {
-                                    await deletePledge(p.id);
-                                    setPledges(prev => prev.filter(x => x.id !== p.id));
-                                  }
-                                }}
-                              >
-                                Delete
-                              </Btn>
+                              <Btn variant="ghost" size="sm" onClick={() => { setPledgeForm({ eventName: p.eventName, cell: p.cell, memberId: p.memberId, pledgeAmount: String(p.pledgeAmount), paidAmount: String(p.paidAmount), jointNames: p.jointNames || "" }); setEditingPledgeId(p.id); setShowModal(true); }}>Edit</Btn>
+                              <Btn variant="danger" size="sm" onClick={async () => { if (confirm("Are you sure you want to delete this pledge?")) { await deletePledge(p.id); setPledges(prev => prev.filter(x => x.id !== p.id)); } }}>Delete</Btn>
                             </div>
                           </td>
                         </tr>
@@ -1245,15 +1356,43 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </Card>
           </div>
         </div>
+        </>
       )}
 
       {tab === "expenses" && (
+        <>
+        <div className="search-toolbar">
+          <div className="search-toolbar__input-wrap">
+            <span className="search-toolbar__icon">🔍</span>
+            <input className="search-toolbar__input" value={expSearch} onChange={e => setExpSearch(e.target.value)} placeholder="Search by description or approved by..." />
+          </div>
+          <select className="search-toolbar__filter" value={expCellFilter} onChange={e => setExpCellFilter(e.target.value)}>
+            <option value="All">All Cells</option>
+            <option value="A">Cell A</option>
+            <option value="B">Cell B</option>
+            <option value="Zone">Zone</option>
+          </select>
+          <select className="search-toolbar__filter" value={expCategoryFilter} onChange={e => setExpCategoryFilter(e.target.value)}>
+            <option value="All">All Categories</option>
+            {["Hospitality", "Materials", "Transport", "Utilities", "Other"].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <div className="search-toolbar__date-wrap">
+            <span className="search-toolbar__date-label">From</span>
+            <input type="date" className="search-toolbar__date" value={expDateFrom} onChange={e => setExpDateFrom(e.target.value)} />
+          </div>
+          <div className="search-toolbar__date-wrap">
+            <span className="search-toolbar__date-label">To</span>
+            <input type="date" className="search-toolbar__date" value={expDateTo} onChange={e => setExpDateTo(e.target.value)} />
+          </div>
+          {expHasFilters && <button className="search-toolbar__clear" onClick={clearExpFilters}>✕ Clear</button>}
+          <span className="search-toolbar__results">{filteredExpenses.length} of {expenses.length}</span>
+        </div>
         <Card style={{ padding: 0, overflow: "hidden" }}>
           <div className="overflow-x-auto">
             <table className="table">
               <thead><tr><th>Date</th><th>Cell</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved by</th><th></th></tr></thead>
               <tbody>
-                {expenses.map(e => (
+                {filteredExpenses.map(e => (
                   <tr key={e.id}>
                     <td><span className="finance__note text-sm">{fmtDate(e.date)}</span></td>
                     <td><Badge label={e.cell === "Zone" ? "Zone" : `Cell ${e.cell}`} variant={e.cell === "Zone" ? "accent" : (e.cell === "A" ? "purple" : "green")} /></td>
@@ -1263,29 +1402,8 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                     <td><span className="finance__note text-sm">{e.approvedBy}</span></td>
                     <td className="text-right">
                       <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
-                        <Btn 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => {
-                            setExpForm({ cell: e.cell, date: e.date, category: e.category, description: e.description, amount: String(e.amount), approvedBy: e.approvedBy });
-                            setEditingExpenseId(e.id);
-                            setShowModal(true);
-                          }}
-                        >
-                          Edit
-                        </Btn>
-                        <Btn 
-                          variant="danger" 
-                          size="sm" 
-                          onClick={async () => {
-                            if (confirm("Are you sure you want to delete this expense?")) {
-                              await deleteExpense(e.id);
-                              setExpenses(prev => prev.filter(x => x.id !== e.id));
-                            }
-                          }}
-                        >
-                          Delete
-                        </Btn>
+                        <Btn variant="ghost" size="sm" onClick={() => { setExpForm({ cell: e.cell, date: e.date, category: e.category, description: e.description, amount: String(e.amount), approvedBy: e.approvedBy }); setEditingExpenseId(e.id); setShowModal(true); }}>Edit</Btn>
+                        <Btn variant="danger" size="sm" onClick={async () => { if (confirm("Are you sure you want to delete this expense?")) { await deleteExpense(e.id); setExpenses(prev => prev.filter(x => x.id !== e.id)); } }}>Delete</Btn>
                       </div>
                     </td>
                   </tr>
@@ -1294,6 +1412,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             </table>
           </div>
         </Card>
+        </>
       )}
 
       {showModal && (
