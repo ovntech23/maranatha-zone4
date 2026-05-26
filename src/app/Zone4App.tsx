@@ -144,6 +144,18 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
 
   const recentMeetings = [...meetings].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
+  const dashboardEventPledges = Object.values(
+    pledges.reduce((acc, p) => {
+      const event = p.eventName || "General Pledges";
+      if (!acc[event]) {
+        acc[event] = { name: event, pledged: 0, paid: 0 };
+      }
+      acc[event].pledged += p.pledgeAmount;
+      acc[event].paid += p.paidAmount;
+      return acc;
+    }, {} as Record<string, { name: string; pledged: number; paid: number }>)
+  ) as any[];
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -212,6 +224,34 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
                 <div className="dashboard__meeting-badges">
                   <Badge label={`${present}/${total}`} />
                   {off && <Badge label={fmt(off.amount)} variant="gold" />}
+                </div>
+              </div>
+            );
+          })}
+        </Card>
+
+        <Card style={{ flex: "1 1 250px" }}>
+          <div className="dashboard__section-title">Event Pledge Receipts</div>
+          {dashboardEventPledges.length === 0 && (
+            <div className="text-sm finance__empty" style={{ padding: "1rem" }}>
+              No event pledges recorded yet.
+            </div>
+          )}
+          {dashboardEventPledges.map(ep => {
+            const pct = ep.pledged ? Math.min(Math.round((ep.paid / ep.pledged) * 100), 100) : 0;
+            return (
+              <div key={ep.name} style={{ marginBottom: 14 }}>
+                <div className="flex justify-between" style={{ marginBottom: 4 }}>
+                  <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{ep.name}</span>
+                  <span className="text-sm font-bold" style={{ color: "var(--gold)" }}>
+                    {fmt(ep.paid)} / {fmt(ep.pledged)}
+                  </span>
+                </div>
+                <div className="progress" style={{ marginBottom: 2 }}>
+                  <div className="progress__bar" style={{ width: `${pct}%`, background: "var(--gold)" }} />
+                </div>
+                <div className="text-xs text-right" style={{ color: "var(--text-secondary)" }}>
+                  {pct}% Fulfilled
                 </div>
               </div>
             );
@@ -812,6 +852,24 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
   const balance = totalOpening + totalOffering + totalPledgePaid - totalExpenses;
 
+  const financeEventPledges = (Object.values(
+    pledges.reduce((acc, p) => {
+      const event = p.eventName || "General Pledges";
+      if (!acc[event]) {
+        acc[event] = { name: event, pledged: 0, paid: 0, participantIds: new Set<string>() };
+      }
+      acc[event].pledged += p.pledgeAmount;
+      acc[event].paid += p.paidAmount;
+      acc[event].participantIds.add(p.memberId);
+      return acc;
+    }, {} as Record<string, { name: string; pledged: number; paid: number; participantIds: Set<string> }>)
+  ) as any[]).map(x => ({
+    name: x.name,
+    pledged: x.pledged,
+    paid: x.paid,
+    participants: x.participantIds.size
+  }));
+
   const getMtgLabel = id => { const m = meetings.find(x => x.id == id); return m ? `Cell ${m.cell} · ${fmtDate(m.date)}` : "—"; };
   const getMemberName = id => members.find(m => m.id == id)?.name || "—";
 
@@ -909,28 +967,82 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       )}
 
       {tab === "pledges" && (
-        <Card style={{ padding: 0, overflow: "hidden" }}>
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th></tr></thead>
-              <tbody>
-                {pledges.map(p => {
-                  const pct = Math.round((p.paidAmount / p.pledgeAmount) * 100);
-                  return (
-                    <tr key={p.id}>
-                      <td><span className="font-bold">{p.eventName}</span></td>
-                      <td>{getMemberName(p.memberId)}</td>
-                      <td><Badge label={`Cell ${p.cell}`} variant={p.cell === "A" ? "purple" : "green"} /></td>
-                      <td className="mono">{fmt(p.pledgeAmount)}</td>
-                      <td className="mono finance__amount--positive">{fmt(p.paidAmount)}</td>
-                      <td><Badge label={pct >= 100 ? "Fulfilled" : `${pct}%`} variant={pct >= 100 ? "green" : "gold"} /></td>
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          {/* Pledge Summary by Event */}
+          <div>
+            <div className="dashboard__section-title" style={{ marginBottom: 10 }}>Pledge Summaries by Event</div>
+            <Card style={{ padding: 0, overflow: "hidden" }}>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Event Category</th>
+                      <th>Participants</th>
+                      <th>Total Pledged</th>
+                      <th>Pledge Receipts (Paid)</th>
+                      <th>Fulfillment Rate</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {financeEventPledges.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="text-center py-6 finance__empty" style={{ padding: "2rem" }}>
+                          No event pledges recorded yet.
+                        </td>
+                      </tr>
+                    )}
+                    {financeEventPledges.map(ep => {
+                      const pct = ep.pledged ? Math.min(Math.round((ep.paid / ep.pledged) * 100), 100) : 0;
+                      return (
+                        <tr key={ep.name}>
+                          <td><span className="font-bold">{ep.name}</span></td>
+                          <td><Badge label={`${ep.participants} active`} variant="accent" /></td>
+                          <td className="mono">{fmt(ep.pledged)}</td>
+                          <td className="mono finance__amount--positive">{fmt(ep.paid)}</td>
+                          <td>
+                            <div className="flex items-center gap-3">
+                              <div className="progress" style={{ flex: 1, minWidth: 80 }}>
+                                <div className="progress__bar" style={{ width: `${pct}%`, background: "var(--gold)" }} />
+                              </div>
+                              <span className="text-xs font-bold" style={{ color: "var(--text-secondary)" }}>{pct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
-        </Card>
+
+          {/* Individual Member Pledges */}
+          <div>
+            <div className="dashboard__section-title" style={{ marginBottom: 10 }}>Individual Pledges by Member</div>
+            <Card style={{ padding: 0, overflow: "hidden" }}>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead><tr><th>Event</th><th>Member</th><th>Cell</th><th>Pledged</th><th>Paid</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {pledges.map(p => {
+                      const pct = Math.round((p.paidAmount / p.pledgeAmount) * 100);
+                      return (
+                        <tr key={p.id}>
+                          <td><span className="font-bold">{p.eventName}</span></td>
+                          <td>{getMemberName(p.memberId)}</td>
+                          <td><Badge label={`Cell ${p.cell}`} variant={p.cell === "A" ? "purple" : "green"} /></td>
+                          <td className="mono">{fmt(p.pledgeAmount)}</td>
+                          <td className="mono finance__amount--positive">{fmt(p.paidAmount)}</td>
+                          <td><Badge label={pct >= 100 ? "Fulfilled" : `${pct}%`} variant={pct >= 100 ? "green" : "gold"} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+        </div>
       )}
 
       {tab === "expenses" && (
