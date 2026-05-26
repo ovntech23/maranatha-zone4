@@ -914,7 +914,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   const [editingOfferingId, setEditingOfferingId] = useState<string | null>(null);
   const [editingPledgeId, setEditingPledgeId] = useState<string | null>(null);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-  const [pledgeForm, setPledgeForm] = useState({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
+  const [pledgeForm, setPledgeForm] = useState({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0", jointNames: "" });
   const [expForm, setExpForm] = useState({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" });
   const [openingForm, setOpeningForm] = useState({ cell: "A", amount: "" });
   const [showEventModal, setShowEventModal] = useState(false);
@@ -976,7 +976,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
       const created = await addPledge({ ...pledgeForm, pledgeAmount, paidAmount });
       setPledges(p => [...p, created]);
     }
-    setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" });
+    setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0", jointNames: "" });
     setShowModal(false);
   };
 
@@ -1173,7 +1173,18 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                       return (
                         <tr key={p.id}>
                           <td><span className="font-bold">{p.eventName}</span></td>
-                          <td>{getMemberName(p.memberId)}</td>
+                          <td>
+                            {p.jointNames ? (
+                              <div>
+                                <span className="font-bold">{p.jointNames}</span>
+                                <span className="text-xs block" style={{ color: "var(--text-secondary)" }}>
+                                  via {getMemberName(p.memberId)}
+                                </span>
+                              </div>
+                            ) : (
+                              getMemberName(p.memberId)
+                            )}
+                          </td>
                           <td><Badge label={`Cell ${p.cell}`} variant={p.cell === "A" ? "purple" : "green"} /></td>
                           <td className="mono">{fmt(p.pledgeAmount)}</td>
                           <td className="mono finance__amount--positive">{fmt(p.paidAmount)}</td>
@@ -1184,7 +1195,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => {
-                                  setPledgeForm({ eventName: p.eventName, cell: p.cell, memberId: p.memberId, pledgeAmount: String(p.pledgeAmount), paidAmount: String(p.paidAmount) });
+                                  setPledgeForm({ eventName: p.eventName, cell: p.cell, memberId: p.memberId, pledgeAmount: String(p.pledgeAmount), paidAmount: String(p.paidAmount), jointNames: p.jointNames || "" });
                                   setEditingPledgeId(p.id);
                                   setShowModal(true);
                                 }}
@@ -1274,7 +1285,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
             setEditingPledgeId(null); 
             setEditingExpenseId(null); 
             setOffForm({ meetingId: "", amount: "", collector: "", notes: "" }); 
-            setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" }); 
+            setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0", jointNames: "" }); 
             setExpForm({ cell: "A", date: new Date().toISOString().slice(0, 10), category: "Hospitality", description: "", amount: "", approvedBy: "Deacon" }); 
           }}
         >
@@ -1344,6 +1355,15 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 </select>
               </div>
               <div>
+                <div className="field-label">Joint/Group Names (Optional)</div>
+                <input 
+                  className="input" 
+                  value={pledgeForm.jointNames} 
+                  onChange={e => setPledgeForm({ ...pledgeForm, jointNames: e.target.value })} 
+                  placeholder="e.g. Mr. & Mrs. Banda, or Ruth & Grace" 
+                />
+              </div>
+              <div>
                 <div className="field-label">Pledge amount (ZMW)</div>
                 <input className="input" type="number" min="0" value={pledgeForm.pledgeAmount} onChange={e => setPledgeForm({ ...pledgeForm, pledgeAmount: e.target.value })} placeholder="0.00" />
               </div>
@@ -1353,7 +1373,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
               </div>
               <div className="flex gap-2">
                 <Btn style={{ flex: 1 }} onClick={savePledge}>{editingPledgeId ? "Update pledge" : "Save pledge"}</Btn>
-                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingPledgeId(null); setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0" }); }}>Cancel</Btn>
+                <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingPledgeId(null); setPledgeForm({ eventName: "", cell: "A", memberId: "", pledgeAmount: "", paidAmount: "0", jointNames: "" }); }}>Cancel</Btn>
               </div>
             </>
           )}

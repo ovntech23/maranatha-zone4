@@ -94,6 +94,7 @@ export default async function Page() {
     memberId: p.memberId,
     pledgeAmount: p.pledgeAmount,
     paidAmount: p.paidAmount,
+    jointNames: p.jointNames || "",
   }));
 
   const serializedExpenses = expenses.map((e) => ({

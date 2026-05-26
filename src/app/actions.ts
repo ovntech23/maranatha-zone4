@@ -169,6 +169,7 @@ export async function addPledge(data: {
   memberId: string;
   pledgeAmount: number;
   paidAmount: number;
+  jointNames?: string;
 }) {
   const pledge = await prisma.pledge.create({
     data: {
@@ -177,6 +178,7 @@ export async function addPledge(data: {
       memberId: data.memberId,
       pledgeAmount: data.pledgeAmount,
       paidAmount: data.paidAmount,
+      jointNames: data.jointNames || null,
     },
   });
   revalidatePath("/");
@@ -376,6 +378,7 @@ export async function updatePledge(
     memberId: string;
     pledgeAmount: number;
     paidAmount: number;
+    jointNames?: string;
   }
 ) {
   const pledge = await prisma.pledge.update({
@@ -386,6 +389,7 @@ export async function updatePledge(
       memberId: data.memberId,
       pledgeAmount: data.pledgeAmount,
       paidAmount: data.paidAmount,
+      jointNames: data.jointNames || null,
     },
   });
   revalidatePath("/");

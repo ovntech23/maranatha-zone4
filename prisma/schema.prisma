@@ -78,6 +78,7 @@ model Pledge {
   memberId     String
   pledgeAmount Float
   paidAmount   Float    @default(0)
+  jointNames   String?  // Optional joint name for group/joint pledges
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
