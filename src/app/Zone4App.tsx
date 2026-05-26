@@ -1236,7 +1236,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 {expenses.map(e => (
                   <tr key={e.id}>
                     <td><span className="finance__note text-sm">{fmtDate(e.date)}</span></td>
-                    <td><Badge label={`Cell ${e.cell}`} variant={e.cell === "A" ? "purple" : "green"} /></td>
+                    <td><Badge label={e.cell === "Zone" ? "Zone" : `Cell ${e.cell}`} variant={e.cell === "Zone" ? "accent" : (e.cell === "A" ? "purple" : "green")} /></td>
                     <td><Badge label={e.category} variant="accent" /></td>
                     <td>{e.description}</td>
                     <td className="mono finance__amount--negative">{fmt(e.amount)}</td>
@@ -1393,6 +1393,7 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
                 <select className="select" value={expForm.cell} onChange={e => setExpForm({ ...expForm, cell: e.target.value })}>
                   <option value="A">Cell A</option>
                   <option value="B">Cell B</option>
+                  <option value="Zone">Zone (Combined)</option>
                 </select>
               </div>
               <div>
