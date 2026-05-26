@@ -103,3 +103,17 @@ model OpeningBalance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model SundaySchoolChild {
+  id          String   @id @default(uuid())
+  name        String
+  cell        String   // "A" or "B"
+  gender      String   // "Male", "Female"
+  age         Int?     // Optional age
+  parentName  String?  // Guardian/Parent Name
+  parentPhone String?  // Guardian/Parent Phone/Contact
+  status      String   @default("Active") // "Active", "Inactive"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+

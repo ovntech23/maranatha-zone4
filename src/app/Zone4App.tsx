@@ -12,6 +12,9 @@ import {
   addExpense,
   setOpeningBalance,
   logoutUser,
+  addSundaySchoolChild,
+  toggleSundaySchoolChildStatus,
+  deleteSundaySchoolChild,
 } from "@/app/actions";
 
 const fmt = (n: number | string) => `K ${Number(n).toLocaleString("en-ZM", { minimumFractionDigits: 2 })}`;
@@ -118,10 +121,11 @@ interface DashboardProps {
   pledges: any[];
   expenses: any[];
   openingBalances: any[];
+  sundaySchoolChildren: any[];
 }
 
 // ─── Dashboard Page ──────────────────────────────────────────────────────
-function Dashboard({ members, meetings, attendance, offerings, pledges, expenses, openingBalances }: DashboardProps) {
+function Dashboard({ members, meetings, attendance, offerings, pledges, expenses, openingBalances, sundaySchoolChildren }: DashboardProps) {
   const activeMembers = members.filter(m => m.status === "Active");
   const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
   const totalOpening = getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone");
@@ -152,6 +156,12 @@ function Dashboard({ members, meetings, attendance, offerings, pledges, expenses
         <Stat label="Cell A" value={activeMembers.filter(m => m.cell === "A").length} variant="purple" />
         <Stat label="Cell B" value={activeMembers.filter(m => m.cell === "B").length} variant="green" />
         <Stat label="Meetings held" value={meetings.length} variant="gold" />
+      </div>
+
+      <div className="dashboard__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <Stat label="Active children" value={sundaySchoolChildren.filter(c => c.status === "Active").length} variant="gold" />
+        <Stat label="Children Cell A" value={sundaySchoolChildren.filter(c => c.cell === "A" && c.status === "Active").length} variant="purple" />
+        <Stat label="Children Cell B" value={sundaySchoolChildren.filter(c => c.cell === "B" && c.status === "Active").length} variant="green" />
       </div>
 
       <div className="dashboard__stats" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
@@ -337,6 +347,172 @@ function Members({ members, setMembers }: MembersProps) {
           </div>
           <div className="flex gap-2" style={{ marginTop: 4 }}>
             <Btn style={{ flex: 1 }} onClick={save}>Save member</Btn>
+            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ─── Sunday School Page ──────────────────────────────────────────────────
+interface SundaySchoolProps {
+  sundaySchoolChildren: any[];
+  setSundaySchoolChildren: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+function SundaySchool({ sundaySchoolChildren, setSundaySchoolChildren }: SundaySchoolProps) {
+  const [showModal, setShowModal] = useState(false);
+  const [filter, setFilter] = useState("All");
+  const [form, setForm] = useState({
+    name: "",
+    cell: "A",
+    gender: "Female",
+    age: "",
+    parentName: "",
+    parentPhone: "",
+    status: "Active",
+  });
+
+  const filtered = sundaySchoolChildren.filter(c => filter === "All" || c.cell === filter);
+
+  const save = async () => {
+    if (!form.name.trim()) return;
+    const childAge = form.age ? parseInt(form.age) : undefined;
+    const created = await addSundaySchoolChild({
+      ...form,
+      age: childAge,
+    });
+    setSundaySchoolChildren(p => [...p, created]);
+    setForm({
+      name: "",
+      cell: "A",
+      gender: "Female",
+      age: "",
+      parentName: "",
+      parentPhone: "",
+      status: "Active",
+    });
+    setShowModal(false);
+  };
+
+  return (
+    <div>
+      <div className="members__header">
+        <h2 className="members__title">Sunday School Children</h2>
+        <div className="members__filters">
+          {["All", "A", "B"].map(f => (
+            <Btn key={f} variant={filter === f ? "primary" : "ghost"} size="sm" onClick={() => setFilter(f)}>
+              {f === "All" ? "All cells" : `Cell ${f}`}
+            </Btn>
+          ))}
+          <Btn size="sm" onClick={() => setShowModal(true)}>+ Add child</Btn>
+        </div>
+      </div>
+
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Cell</th>
+                <th>Gender</th>
+                <th>Age</th>
+                <th>Parent/Guardian</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center py-6" style={{ color: "var(--text-secondary)", padding: "2rem" }}>
+                    No Sunday School children found in this selection.
+                  </td>
+                </tr>
+              )}
+              {filtered.map(c => (
+                <tr key={c.id}>
+                  <td><span className="font-bold">{c.name}</span></td>
+                  <td><Badge label={`Cell ${c.cell}`} variant={c.cell === "A" ? "purple" : "green"} /></td>
+                  <td><Badge label={c.gender} variant={c.gender === "Female" ? "purple" : ""} /></td>
+                  <td><span className="mono font-bold">{c.age || "—"}</span></td>
+                  <td>{c.parentName || "—"}</td>
+                  <td><span className="text-sm" style={{ color: "var(--text-secondary)" }}>{c.parentPhone || "—"}</span></td>
+                  <td><Badge label={c.status} variant={c.status === "Active" ? "green" : "muted"} /></td>
+                  <td className="text-right">
+                    <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                      <Btn
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          const updated = await toggleSundaySchoolChildStatus(c.id, c.status);
+                          setSundaySchoolChildren(p => p.map(x => x.id === c.id ? updated : x));
+                        }}
+                      >
+                        {c.status === "Active" ? "Deactivate" : "Activate"}
+                      </Btn>
+                      <Btn
+                        variant="danger"
+                        size="sm"
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete ${c.name}? This will permanently remove their record.`)) {
+                            await deleteSundaySchoolChild(c.id);
+                            setSundaySchoolChildren(p => p.filter(x => x.id !== c.id));
+                          }
+                        }}
+                      >
+                        Delete
+                      </Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {showModal && (
+        <Modal title="Add new child" onClose={() => setShowModal(false)}>
+          <div>
+            <div className="field-label">Full name</div>
+            <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. Chipo Banda" />
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Cell</div>
+              <select className="select" value={form.cell} onChange={e => setForm({ ...form, cell: e.target.value })}>
+                <option value="A">Zone 4 Cell A</option>
+                <option value="B">Zone 4 Cell B</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Gender</div>
+              <select className="select" value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })}>
+                <option value="Female">Female</option>
+                <option value="Male">Male</option>
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Age</div>
+              <input className="input" type="number" value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} placeholder="e.g. 8" min="0" max="18" />
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Parent/Guardian Name</div>
+              <input className="input" value={form.parentName} onChange={e => setForm({ ...form, parentName: e.target.value })} placeholder="e.g. Joseph Banda" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Parent/Guardian Phone</div>
+              <input className="input" value={form.parentPhone} onChange={e => setForm({ ...form, parentPhone: e.target.value })} placeholder="e.g. 097-000-0000" />
+            </div>
+          </div>
+          <div className="flex gap-2" style={{ marginTop: 12 }}>
+            <Btn style={{ flex: 1 }} onClick={save}>Save child</Btn>
             <Btn variant="ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>Cancel</Btn>
           </div>
         </Modal>
@@ -924,6 +1100,7 @@ interface Zone4AppProps {
   initialPledges: any[];
   initialExpenses: any[];
   initialOpeningBalances: any[];
+  initialSundaySchoolChildren: any[];
   userSession?: {
     name: string;
     email: string;
@@ -940,6 +1117,7 @@ export default function Zone4App({
   initialPledges,
   initialExpenses,
   initialOpeningBalances,
+  initialSundaySchoolChildren,
   userSession,
 }: Zone4AppProps) {
   const [page, setPage] = useState("dashboard");
@@ -950,6 +1128,7 @@ export default function Zone4App({
   const [pledges, setPledges] = useState(initialPledges);
   const [expenses, setExpenses] = useState(initialExpenses);
   const [openingBalances, setOpeningBalances] = useState(initialOpeningBalances);
+  const [sundaySchoolChildren, setSundaySchoolChildren] = useState(initialSundaySchoolChildren);
 
   const props = {
     members,
@@ -966,11 +1145,14 @@ export default function Zone4App({
     setExpenses,
     openingBalances,
     setOpeningBalances,
+    sundaySchoolChildren,
+    setSundaySchoolChildren,
   };
 
   const nav = [
     { key: "dashboard", label: "Dashboard" },
     { key: "members", label: "Members" },
+    { key: "sunday-school", label: "Sunday School" },
     { key: "attendance", label: "Attendance" },
     { key: "finance", label: "Finance" },
   ];
@@ -1027,6 +1209,7 @@ export default function Zone4App({
       <main className="page-container">
         {page === "dashboard" && <Dashboard {...props} />}
         {page === "members" && <Members {...props} />}
+        {page === "sunday-school" && <SundaySchool {...props} />}
         {page === "attendance" && <Attendance {...props} />}
         {page === "finance" && <Finance {...props} />}
       </main>

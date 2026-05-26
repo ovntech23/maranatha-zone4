@@ -84,8 +84,18 @@ const SEED_EXPENSES = [
   { id: 3, cell: "A", date: "2025-05-12", category: "Transport", description: "Fuel for home visit", amount: 120, approvedBy: "Deacon" },
 ];
 
+const SEED_CHILDREN = [
+  { id: 1, name: "Chipo Banda", cell: "A", gender: "Female", age: 8, parentName: "Joseph Banda", parentPhone: "097-111-0002", status: "Active" },
+  { id: 2, name: "Mwansa Tembo", cell: "A", gender: "Male", age: 6, parentName: "Daniel Tembo", parentPhone: "097-111-0004", status: "Active" },
+  { id: 3, name: "Luyando Zulu", cell: "B", gender: "Female", age: 10, parentName: "Samuel Zulu", parentPhone: "097-111-0008", status: "Active" },
+  { id: 4, name: "Kondwani Mulenga", cell: "B", gender: "Male", age: 5, parentName: "Mary Mulenga", parentPhone: "097-111-0007", status: "Active" },
+];
+
 function makeMemberId(num) {
   return `00000000-0000-0000-0000-${num.toString().padStart(12, "0")}`;
+}
+function makeChildId(num) {
+  return `00000000-0000-0000-0005-${num.toString().padStart(12, "0")}`;
 }
 function makeMeetingId(num) {
   return `00000000-0000-0000-0001-${num.toString().padStart(12, "0")}`;
@@ -104,6 +114,7 @@ async function main() {
   console.log("Starting database seeding...");
 
   // Clean existing tables in correct order of dependency
+  await prisma.sundaySchoolChild.deleteMany();
   await prisma.attendance.deleteMany();
   await prisma.offering.deleteMany();
   await prisma.pledge.deleteMany();
@@ -211,6 +222,23 @@ async function main() {
     });
   }
   console.log("Seeded expenses.");
+
+  // Seed Sunday School Children
+  for (const c of SEED_CHILDREN) {
+    await prisma.sundaySchoolChild.create({
+      data: {
+        id: makeChildId(c.id),
+        name: c.name,
+        cell: c.cell,
+        gender: c.gender,
+        age: c.age,
+        parentName: c.parentName,
+        parentPhone: c.parentPhone,
+        status: c.status,
+      },
+    });
+  }
+  console.log("Seeded Sunday School children.");
 
   console.log("Database seeding completed successfully!");
 }

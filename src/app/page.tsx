@@ -44,6 +44,10 @@ export default async function Page() {
 
   const openingBalances = await prisma.openingBalance.findMany();
 
+  const sundaySchoolChildren = await prisma.sundaySchoolChild.findMany({
+    orderBy: { name: "asc" },
+  });
+
   // Serialize records to plain JSON types (Date -> ISO String)
   const serializedMembers = members.map((m) => ({
     id: m.id,
@@ -103,6 +107,17 @@ export default async function Page() {
     amount: o.amount,
   }));
 
+  const serializedSundaySchoolChildren = sundaySchoolChildren.map((c) => ({
+    id: c.id,
+    name: c.name,
+    cell: c.cell,
+    gender: c.gender,
+    age: c.age || "",
+    parentName: c.parentName || "",
+    parentPhone: c.parentPhone || "",
+    status: c.status,
+  }));
+
   return (
     <Zone4App
       initialMembers={serializedMembers}
@@ -112,6 +127,7 @@ export default async function Page() {
       initialPledges={serializedPledges}
       initialExpenses={serializedExpenses}
       initialOpeningBalances={serializedOpeningBalances}
+      initialSundaySchoolChildren={serializedSundaySchoolChildren}
       userSession={userSession}
     />
   );

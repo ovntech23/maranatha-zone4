@@ -47,6 +47,48 @@ export async function deleteMember(id: string) {
   return member;
 }
 
+export async function addSundaySchoolChild(data: {
+  name: string;
+  cell: string;
+  gender: string;
+  age?: number;
+  parentName?: string;
+  parentPhone?: string;
+  status: string;
+}) {
+  const child = await prisma.sundaySchoolChild.create({
+    data: {
+      name: data.name,
+      cell: data.cell,
+      gender: data.gender,
+      age: data.age !== undefined && data.age !== null && data.age !== "" ? Number(data.age) : null,
+      parentName: data.parentName || null,
+      parentPhone: data.parentPhone || null,
+      status: data.status,
+    },
+  });
+  revalidatePath("/");
+  return child;
+}
+
+export async function toggleSundaySchoolChildStatus(id: string, currentStatus: string) {
+  const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+  const child = await prisma.sundaySchoolChild.update({
+    where: { id },
+    data: { status: newStatus },
+  });
+  revalidatePath("/");
+  return child;
+}
+
+export async function deleteSundaySchoolChild(id: string) {
+  const child = await prisma.sundaySchoolChild.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return child;
+}
+
 export async function createMeeting(
   meetingData: {
     cell: string;
