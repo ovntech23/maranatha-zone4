@@ -336,7 +336,7 @@ function Members({ members, setMembers }: MembersProps) {
   const hasFilters = filter !== "All" || statusFilter !== "All" || roleFilter !== "All" || genderFilter !== "All" || search !== "";
   const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(filtered, 20);
   const clearFilters = () => { setFilter("All"); setStatusFilter("All"); setRoleFilter("All"); setGenderFilter("All"); setSearch(""); setCurrentPage(1); };
-  const roleVariant = { Member: "", Elder: "gold", Deacon: "green", Treasurer: "gold", Secretary: "purple", "Youth Leader": "accent", "Cell Leader": "green", "Women's Chairlady": "purple", "Zone Pastor": "accent" };
+  const roleVariant = { Member: "", Elder: "gold", Deacon: "green", "Zone Deacon": "green", Treasurer: "gold", Secretary: "purple", "Youth Leader": "accent", "Cell Leader": "green", "Women's Chairlady": "purple", "Zone Pastor": "accent" };
 
   const save = async () => {
     if (!form.name.trim()) return;
@@ -376,7 +376,7 @@ function Members({ members, setMembers }: MembersProps) {
         </select>
         <select className="search-toolbar__filter" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
           <option value="All">All Roles</option>
-          {["Member", "Elder", "Deacon", "Treasurer", "Secretary", "Youth Leader", "Cell Leader", "Women's Chairlady", "Zone Pastor"].map(r => <option key={r}>{r}</option>)}
+          {["Member", "Elder", "Deacon", "Zone Deacon", "Treasurer", "Secretary", "Youth Leader", "Cell Leader", "Women's Chairlady", "Zone Pastor"].map(r => <option key={r}>{r}</option>)}
         </select>
         <select className="search-toolbar__filter" value={genderFilter} onChange={e => setGenderFilter(e.target.value)}>
           <option value="All">All Genders</option>
@@ -478,6 +478,7 @@ function Members({ members, setMembers }: MembersProps) {
               <option>Member</option>
               <option>Elder</option>
               <option>Deacon</option>
+              <option>Zone Deacon</option>
               <option>Treasurer</option>
               <option>Secretary</option>
               <option>Youth Leader</option>
@@ -1870,7 +1871,7 @@ const Reports: React.FC<ReportsProps> = ({
               <h2 className="report-sub-title">ZONE 4 · CELL MANAGEMENT SYSTEM</h2>
               <div className="report-divider"></div>
               <h3 className="report-doc-title">
-                {reportType === "Full" && "EXECUTIVE CELL REPORT"}
+                {reportType === "Full" && (cellFilter === "All" ? "EXECUTIVE ZONE REPORT" : "EXECUTIVE CELL REPORT")}
                 {reportType === "Financial" && "FINANCIAL AUDIT STATEMENT"}
                 {reportType === "Membership" && "MEMBERSHIP & ATTENDANCE RECORD"}
               </h3>
@@ -2227,7 +2228,13 @@ const Reports: React.FC<ReportsProps> = ({
             <div className="report-signatures-container">
               <div className="report-signature-block">
                 <div className="report-signature-line"></div>
-                <span className="report-signature-title">Prepared By: Cell Deacon</span>
+                <span className="report-signature-title">
+                  Prepared By: {cellFilter === "All" ? "Zone Deacon" : "Cell Deacon"}
+                </span>
+              </div>
+              <div className="report-signature-block">
+                <div className="report-signature-line"></div>
+                <span className="report-signature-title">Reviewed By: Zone Elder</span>
               </div>
               <div className="report-signature-block">
                 <div className="report-signature-line"></div>
