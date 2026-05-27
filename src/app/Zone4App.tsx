@@ -1722,6 +1722,525 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   );
 }
 
+// ─── Reports Page ────────────────────────────────────────────────────────
+interface ReportsProps {
+  members: any[];
+  meetings: any[];
+  attendance: any[];
+  offerings: any[];
+  pledges: any[];
+  expenses: any[];
+  openingBalances: any[];
+  sundaySchoolChildren: any[];
+  pledgeEvents: any[];
+  userSession?: {
+    name: string;
+    email: string;
+    role: string;
+  } | null;
+}
+
+const Reports: React.FC<ReportsProps> = ({
+  members,
+  meetings,
+  attendance,
+  offerings,
+  pledges,
+  expenses,
+  openingBalances,
+  sundaySchoolChildren,
+  pledgeEvents,
+  userSession,
+}) => {
+  const [cellFilter, setCellFilter] = useState("All");
+  const [reportType, setReportType] = useState("Full");
+
+  const filteredMembers = members.filter(m => cellFilter === "All" ? true : m.cell === cellFilter);
+  const activeMembers = filteredMembers.filter(m => m.status === "Active");
+
+  const filteredChildren = sundaySchoolChildren.filter(c => cellFilter === "All" ? true : c.cell === cellFilter);
+  const activeChildren = filteredChildren.filter(c => c.status === "Active");
+
+  const getOpeningBalance = (c: string) => openingBalances.find(o => o.cell === c)?.amount || 0;
+  const openingSum = cellFilter === "All"
+    ? (getOpeningBalance("A") + getOpeningBalance("B") + getOpeningBalance("Zone"))
+    : getOpeningBalance(cellFilter);
+
+  const filteredMeetings = meetings.filter(m => cellFilter === "All" ? true : m.cell === cellFilter);
+
+  const getMtgCell = id => meetings.find(x => x.id == id)?.cell || "";
+  const filteredOfferings = offerings.filter(o => {
+    if (cellFilter === "All") return true;
+    return getMtgCell(o.meetingId) === cellFilter;
+  });
+  const currentOfferingSum = filteredOfferings.reduce((sum, o) => sum + o.amount, 0);
+  const totalOffering = openingSum + currentOfferingSum;
+
+  const filteredPledges = pledges.filter(p => cellFilter === "All" ? true : p.cell === cellFilter);
+  const totalPledged = filteredPledges.reduce((sum, p) => sum + p.pledgeAmount, 0);
+  const totalPaidPledge = filteredPledges.reduce((sum, p) => sum + p.paidAmount, 0);
+
+  const filteredExpenses = expenses.filter(e => cellFilter === "All" ? true : e.cell === cellFilter);
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  const netBalance = totalOffering + totalPaidPledge - totalExpenses;
+
+  const avgAtt = (cellVal: string) => {
+    const cm = meetings.filter(m => m.cell === cellVal);
+    if (!cm.length) return 0;
+    const total = cm.reduce((s, m) => s + attendance.filter(a => a.meetingId === m.id && a.status === "Present").length, 0);
+    return Math.round(total / cm.length);
+  };
+
+  const getAvgAttendanceForReport = () => {
+    if (cellFilter === "All") {
+      if (!meetings.length) return 0;
+      const totalPresent = meetings.reduce((s, m) => s + attendance.filter(a => a.meetingId === m.id && a.status === "Present").length, 0);
+      return Math.round(totalPresent / meetings.length);
+    } else {
+      return avgAtt(cellFilter);
+    }
+  };
+
+  const pledgeEventStats = Object.values(
+    filteredPledges.reduce((acc, p) => {
+      const event = p.eventName || "General Pledges";
+      if (!acc[event]) {
+        acc[event] = { name: event, pledged: 0, paid: 0 };
+      }
+      acc[event].pledged += p.pledgeAmount;
+      acc[event].paid += p.paidAmount;
+      return acc;
+    }, {} as Record<string, { name: string; pledged: number; paid: number }>)
+  );
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const reportDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="reports-page animate-fade-in">
+      <div className="reports-page__header flex justify-between items-center flex-wrap gap-4" style={{ marginBottom: "20px" }}>
+        <div>
+          <h2 className="members__title">Reports & Statements</h2>
+          <div className="dashboard__subtitle">Configure, preview, and export official reports to PDF</div>
+        </div>
+        <Btn onClick={handlePrint} size="md" className="btn-print-action">
+          🖨️ Print Full Report (PDF)
+        </Btn>
+      </div>
+
+      <Card style={{ marginBottom: "20px" }} className="no-print">
+        <div className="flex gap-4 flex-wrap items-center">
+          <div style={{ flex: "1 1 200px" }}>
+            <div className="field-label">Filter by Cell scope</div>
+            <select className="select" value={cellFilter} onChange={e => setCellFilter(e.target.value)}>
+              <option value="All">All Cells (Cell A, Cell B & Zone)</option>
+              <option value="A">Cell A only</option>
+              <option value="B">Cell B only</option>
+            </select>
+          </div>
+          <div style={{ flex: "1 1 200px" }}>
+            <div className="field-label">Report Focus</div>
+            <select className="select" value={reportType} onChange={e => setReportType(e.target.value)}>
+              <option value="Full">Full Executive Report (Comprehensive)</option>
+              <option value="Financial">Financial Statement only</option>
+              <option value="Membership">Membership & Attendance Registry</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      <div className="report-print-container">
+        <div className="report-sheet">
+          <div className="report-header-section">
+            <div className="report-church-logo">
+              <span className="report-church-logo__text">MBC</span>
+            </div>
+            <div className="report-header-titles">
+              <h1 className="report-main-title">MARANATHA BIBLE CHURCH</h1>
+              <h2 className="report-sub-title">ZONE 4 · CELL MANAGEMENT SYSTEM</h2>
+              <div className="report-divider"></div>
+              <h3 className="report-doc-title">
+                {reportType === "Full" && "EXECUTIVE CELL REPORT"}
+                {reportType === "Financial" && "FINANCIAL AUDIT STATEMENT"}
+                {reportType === "Membership" && "MEMBERSHIP & ATTENDANCE RECORD"}
+              </h3>
+            </div>
+          </div>
+
+          <div className="report-meta-grid">
+            <div>
+              <span className="report-meta-label">Scope:</span>
+              <span className="report-meta-val">
+                {cellFilter === "All" ? "Zone 4 (Cell A, Cell B & Zone Fund)" : `Zone 4 - Cell ${cellFilter}`}
+              </span>
+            </div>
+            <div>
+              <span className="report-meta-label">Generated:</span>
+              <span className="report-meta-val">{reportDate}</span>
+            </div>
+            <div>
+              <span className="report-meta-label">Prepared By:</span>
+              <span className="report-meta-val">{userSession ? `${userSession.name} (${userSession.role})` : "System Administrator"}</span>
+            </div>
+            <div>
+              <span className="report-meta-label">Status:</span>
+              <span className="report-meta-val report-status-active">OFFICIAL</span>
+            </div>
+          </div>
+
+          {(reportType === "Full" || reportType === "Financial" || reportType === "Membership") && (
+            <div className="report-section">
+              <h4 className="report-section-title">1. Executive Summary & KPIs</h4>
+              <div className="report-stats-grid">
+                <div className="report-stat-card">
+                  <span className="report-stat-label">Active Members</span>
+                  <span className="report-stat-val font-bold">{activeMembers.length}</span>
+                </div>
+                <div className="report-stat-card">
+                  <span className="report-stat-label">Sunday School</span>
+                  <span className="report-stat-val font-bold">{activeChildren.length} Children</span>
+                </div>
+                <div className="report-stat-card">
+                  <span className="report-stat-label">Meetings Held</span>
+                  <span className="report-stat-val font-bold">{filteredMeetings.length}</span>
+                </div>
+                <div className="report-stat-card">
+                  <span className="report-stat-label">Avg Attendance</span>
+                  <span className="report-stat-val font-bold">{getAvgAttendanceForReport()} members</span>
+                </div>
+              </div>
+
+              <div className="report-stats-grid" style={{ marginTop: "12px" }}>
+                <div className="report-stat-card bg-green-light">
+                  <span className="report-stat-label text-green-dark">Total Offerings (Inc. Opening)</span>
+                  <span className="report-stat-val font-bold text-green-dark">{fmt(totalOffering)}</span>
+                </div>
+                <div className="report-stat-card bg-gold-light">
+                  <span className="report-stat-label text-gold-dark">Pledges Collected</span>
+                  <span className="report-stat-val font-bold text-gold-dark">{fmt(totalPaidPledge)}</span>
+                </div>
+                <div className="report-stat-card bg-coral-light">
+                  <span className="report-stat-label text-coral-dark">Total Expenses</span>
+                  <span className="report-stat-val font-bold text-coral-dark">{fmt(totalExpenses)}</span>
+                </div>
+                <div className="report-stat-card bg-blue-light">
+                  <span className="report-stat-label text-blue-dark">Net Cash Position</span>
+                  <span className="report-stat-val font-bold text-blue-dark">{fmt(netBalance)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(reportType === "Full" || reportType === "Financial") && (
+            <div className="report-section page-break">
+              <h4 className="report-section-title">2. Financial Ledger & Revenue Analysis</h4>
+              
+              <h5 className="report-subsection-title">2.1 Fund Balances Summary</h5>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Fund Scope / Category</th>
+                    <th className="text-right">Opening Carryover</th>
+                    <th className="text-right">Current Offerings</th>
+                    <th className="text-right">Pledges Paid</th>
+                    <th className="text-right">Total Expenses</th>
+                    <th className="text-right">Net Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cellFilter === "All" ? (
+                    <>
+                      <tr>
+                        <td><span className="font-bold">Cell A Fund</span></td>
+                        <td className="text-right">{fmt(getOpeningBalance("A"))}</td>
+                        <td className="text-right">{fmt(offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "A").reduce((s,o)=>s+o.amount, 0))}</td>
+                        <td className="text-right">{fmt(pledges.filter(p => p.cell === "A").reduce((s,p)=>s+p.paidAmount, 0))}</td>
+                        <td className="text-right">{fmt(expenses.filter(e => e.cell === "A").reduce((s,e)=>s+e.amount, 0))}</td>
+                        <td className="text-right font-bold">
+                          {fmt(
+                            getOpeningBalance("A") + 
+                            offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "A").reduce((s,o)=>s+o.amount, 0) +
+                            pledges.filter(p => p.cell === "A").reduce((s,p)=>s+p.paidAmount, 0) -
+                            expenses.filter(e => e.cell === "A").reduce((s,e)=>s+e.amount, 0)
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><span className="font-bold">Cell B Fund</span></td>
+                        <td className="text-right">{fmt(getOpeningBalance("B"))}</td>
+                        <td className="text-right">{fmt(offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "B").reduce((s,o)=>s+o.amount, 0))}</td>
+                        <td className="text-right">{fmt(pledges.filter(p => p.cell === "B").reduce((s,p)=>s+p.paidAmount, 0))}</td>
+                        <td className="text-right">{fmt(expenses.filter(e => e.cell === "B").reduce((s,e)=>s+e.amount, 0))}</td>
+                        <td className="text-right font-bold">
+                          {fmt(
+                            getOpeningBalance("B") + 
+                            offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "B").reduce((s,o)=>s+o.amount, 0) +
+                            pledges.filter(p => p.cell === "B").reduce((s,p)=>s+p.paidAmount, 0) -
+                            expenses.filter(e => e.cell === "B").reduce((s,e)=>s+e.amount, 0)
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><span className="font-bold">Zone Combined Fund</span></td>
+                        <td className="text-right">{fmt(getOpeningBalance("Zone"))}</td>
+                        <td className="text-right">{fmt(offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "Zone").reduce((s,o)=>s+o.amount, 0))}</td>
+                        <td className="text-right">{fmt(pledges.filter(p => p.cell === "Zone").reduce((s,p)=>s+p.paidAmount, 0))}</td>
+                        <td className="text-right">{fmt(expenses.filter(e => e.cell === "Zone").reduce((s,e)=>s+e.amount, 0))}</td>
+                        <td className="text-right font-bold">
+                          {fmt(
+                            getOpeningBalance("Zone") + 
+                            offerings.filter(o => meetings.find(m => m.id === o.meetingId)?.cell === "Zone").reduce((s,o)=>s+o.amount, 0) +
+                            pledges.filter(p => p.cell === "Zone").reduce((s,p)=>s+p.paidAmount, 0) -
+                            expenses.filter(e => e.cell === "Zone").reduce((s,e)=>s+e.amount, 0)
+                          )}
+                        </td>
+                      </tr>
+                    </>
+                  ) : (
+                    <tr>
+                      <td><span className="font-bold">Cell {cellFilter} Fund</span></td>
+                      <td className="text-right">{fmt(getOpeningBalance(cellFilter))}</td>
+                      <td className="text-right">{fmt(currentOfferingSum)}</td>
+                      <td className="text-right">{fmt(totalPaidPledge)}</td>
+                      <td className="text-right">{fmt(totalExpenses)}</td>
+                      <td className="text-right font-bold">{fmt(netBalance)}</td>
+                    </tr>
+                  )}
+                  <tr className="report-table-total-row">
+                    <td>Total Cash Balance</td>
+                    <td className="text-right">{fmt(openingSum)}</td>
+                    <td className="text-right">{fmt(currentOfferingSum)}</td>
+                    <td className="text-right">{fmt(totalPaidPledge)}</td>
+                    <td className="text-right">{fmt(totalExpenses)}</td>
+                    <td className="text-right font-bold">{fmt(netBalance)}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <h5 className="report-subsection-title" style={{ marginTop: "16px" }}>2.2 Event Pledges Breakdown</h5>
+              {pledgeEventStats.length === 0 ? (
+                <div className="report-empty-message">No event pledges recorded.</div>
+              ) : (
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Event Fund Name</th>
+                      <th className="text-right">Total Pledged</th>
+                      <th className="text-right">Collected (Paid)</th>
+                      <th className="text-right">Outstanding (Unpaid)</th>
+                      <th className="text-right">Fulfillment Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pledgeEventStats.map((ep: any) => {
+                      const outstanding = ep.pledged - ep.paid;
+                      const pct = ep.pledged ? Math.min(Math.round((ep.paid / ep.pledged) * 100), 100) : 0;
+                      return (
+                        <tr key={ep.name}>
+                          <td><span className="font-bold">{ep.name}</span></td>
+                          <td className="text-right">{fmt(ep.pledged)}</td>
+                          <td className="text-right">{fmt(ep.paid)}</td>
+                          <td className="text-right font-bold text-coral-dark">{fmt(outstanding)}</td>
+                          <td className="text-right font-bold">{pct}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              <h5 className="report-subsection-title" style={{ marginTop: "16px" }}>2.3 Expense Ledger</h5>
+              {filteredExpenses.length === 0 ? (
+                <div className="report-empty-message">No expenses recorded for this cell scope.</div>
+              ) : (
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Cell Scope</th>
+                      <th>Category</th>
+                      <th>Description</th>
+                      <th>Approved By</th>
+                      <th className="text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredExpenses.map(e => (
+                      <tr key={e.id}>
+                        <td>{fmtDate(e.date)}</td>
+                        <td>{e.cell === "Zone" ? "Zone" : `Cell ${e.cell}`}</td>
+                        <td>{e.category}</td>
+                        <td>{e.description}</td>
+                        <td>{e.approvedBy}</td>
+                        <td className="text-right font-bold text-coral-dark">-{fmt(e.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr className="report-table-total-row">
+                      <td colSpan={5}>Total Operational Expenses</td>
+                      <td className="text-right font-bold text-coral-dark">-{fmt(totalExpenses)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {(reportType === "Full" || reportType === "Membership") && (
+            <div className="report-section page-break">
+              <h4 className="report-section-title">3. Attendance & Meeting Log</h4>
+              <p className="report-paragraph" style={{ marginBottom: "12px" }}>
+                The following meetings were held by Cell groups within the selected scope. Attendance values are tracked against active registered members.
+              </p>
+
+              {filteredMeetings.length === 0 ? (
+                <div className="report-empty-message">No meetings recorded for this selection.</div>
+              ) : (
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Cell Group</th>
+                      <th>Meeting Type</th>
+                      <th className="text-center">Present / Total</th>
+                      <th className="text-center">Attendance Rate</th>
+                      <th className="text-right">Offerings Collected</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...filteredMeetings]
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .map(m => {
+                        const present = attendance.filter(a => a.meetingId === m.id && a.status === "Present").length;
+                        const isZone = m.cell === "Zone";
+                        const total = isZone
+                          ? members.filter(mb => mb.status === "Active").length
+                          : members.filter(mb => mb.cell === m.cell && mb.status === "Active").length;
+                        
+                        const pct = total ? Math.round((present / total) * 100) : 0;
+                        const off = offerings.find(o => o.meetingId === m.id);
+
+                        return (
+                          <tr key={m.id}>
+                            <td>{fmtDate(m.date)}</td>
+                            <td>{isZone ? "Zone Meeting" : `Cell ${m.cell}`}</td>
+                            <td>{m.type}</td>
+                            <td className="text-center font-bold">{present} / {total}</td>
+                            <td className="text-center">{pct}%</td>
+                            <td className="text-right font-bold">{off ? fmt(off.amount) : "—"}</td>
+                          </tr>
+                        );
+                      })
+                    }
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
+          {(reportType === "Full" || reportType === "Membership") && (
+            <div className="report-section page-break">
+              <h4 className="report-section-title">4. Congregational Directories</h4>
+              
+              <h5 className="report-subsection-title">4.1 Active Member Directory ({activeMembers.length} registered)</h5>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Cell</th>
+                    <th>Role</th>
+                    <th>Phone</th>
+                    <th>Gender</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeMembers.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center">No active members found.</td></tr>
+                  ) : (
+                    [...activeMembers]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(m => (
+                        <tr key={m.id}>
+                          <td><span className="font-bold">{m.name}</span></td>
+                          <td>Cell {m.cell}</td>
+                          <td>{m.role}</td>
+                          <td>{m.phone || "—"}</td>
+                          <td>{m.gender || "—"}</td>
+                          <td>Active</td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+
+              <h5 className="report-subsection-title" style={{ marginTop: "20px" }}>4.2 Active Sunday School Registry ({activeChildren.length} children)</h5>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Child's Name</th>
+                    <th>Cell</th>
+                    <th>Gender</th>
+                    <th>Age</th>
+                    <th>Parent / Guardian</th>
+                    <th>Guardian Phone</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeChildren.length === 0 ? (
+                    <tr><td colSpan={6} className="text-center">No active Sunday School children found.</td></tr>
+                  ) : (
+                    [...activeChildren]
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(c => (
+                        <tr key={c.id}>
+                          <td><span className="font-bold">{c.name}</span></td>
+                          <td>Cell {c.cell}</td>
+                          <td>{c.gender}</td>
+                          <td className="text-center">{c.age || "—"}</td>
+                          <td>{c.parentName || "—"}</td>
+                          <td>{c.parentPhone || "—"}</td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="report-footer">
+            <div className="report-divider" style={{ marginTop: "40px" }}></div>
+            <div className="flex justify-between items-center text-xs" style={{ color: "var(--text-secondary)", marginTop: "10px" }}>
+              <span>Maranatha Bible Church · Zone 4 Cell Administration Report</span>
+              <span>Generated via Cell Management System</span>
+            </div>
+            
+            <div className="report-signatures-container">
+              <div className="report-signature-block">
+                <div className="report-signature-line"></div>
+                <span className="report-signature-title">Prepared By: Cell Deacon</span>
+              </div>
+              <div className="report-signature-block">
+                <div className="report-signature-line"></div>
+                <span className="report-signature-title">Approved By: Zone Pastor</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface Zone4AppProps {
   initialMembers: any[];
   initialMeetings: any[];
@@ -1791,6 +2310,7 @@ export default function Zone4App({
     { key: "sunday-school", label: "Sunday School" },
     { key: "attendance", label: "Attendance" },
     { key: "finance", label: "Finance" },
+    { key: "reports", label: "Reports" },
   ];
 
   return (
@@ -1848,6 +2368,7 @@ export default function Zone4App({
         {page === "sunday-school" && <SundaySchool {...props} />}
         {page === "attendance" && <Attendance {...props} />}
         {page === "finance" && <Finance {...props} />}
+        {page === "reports" && <Reports {...props} userSession={userSession} />}
       </main>
     </div>
   );
