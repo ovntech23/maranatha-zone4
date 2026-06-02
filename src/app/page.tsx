@@ -52,6 +52,10 @@ export default async function Page() {
     orderBy: { name: "asc" },
   });
 
+  const activityNotes = await prisma.activityNote.findMany({
+    orderBy: { date: "desc" },
+  });
+
 
   // Serialize records to plain JSON types (Date -> ISO String)
   const serializedMembers = members.map((m) => ({
@@ -130,6 +134,16 @@ export default async function Page() {
     description: pe.description || "",
   }));
 
+  const serializedActivityNotes = activityNotes.map((n) => ({
+    id: n.id,
+    title: n.title,
+    category: n.category,
+    cell: n.cell,
+    date: n.date.toISOString().slice(0, 10),
+    notes: n.notes,
+    recordedBy: n.recordedBy || "",
+  }));
+
 
   return (
     <Zone4App
@@ -142,6 +156,7 @@ export default async function Page() {
       initialOpeningBalances={serializedOpeningBalances}
       initialSundaySchoolChildren={serializedSundaySchoolChildren}
       initialPledgeEvents={serializedPledgeEvents}
+      initialActivityNotes={serializedActivityNotes}
       userSession={userSession}
     />
   );

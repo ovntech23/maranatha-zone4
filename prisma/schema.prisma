@@ -126,4 +126,16 @@ model PledgeEvent {
   updatedAt   DateTime @updatedAt
 }
 
+model ActivityNote {
+  id          String   @id @default(uuid())
+  title       String
+  category    String   // "Visitation", "Outreach", "Prayer", "General", etc.
+  cell        String   // "A", "B", "Zone", or "General"
+  date        DateTime
+  notes       String
+  recordedBy  String?  // Optional coordinator name/role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 

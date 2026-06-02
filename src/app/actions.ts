@@ -457,3 +457,60 @@ export async function deletePledgeEvent(id: string) {
   return event;
 }
 
+export async function addActivityNote(data: {
+  title: string;
+  category: string;
+  cell: string;
+  date: string;
+  notes: string;
+  recordedBy?: string;
+}) {
+  const note = await prisma.activityNote.create({
+    data: {
+      title: data.title,
+      category: data.category,
+      cell: data.cell,
+      date: new Date(data.date + "T00:00:00Z"),
+      notes: data.notes,
+      recordedBy: data.recordedBy || null,
+    },
+  });
+  revalidatePath("/");
+  return note;
+}
+
+export async function updateActivityNote(
+  id: string,
+  data: {
+    title: string;
+    category: string;
+    cell: string;
+    date: string;
+    notes: string;
+    recordedBy?: string;
+  }
+) {
+  const note = await prisma.activityNote.update({
+    where: { id },
+    data: {
+      title: data.title,
+      category: data.category,
+      cell: data.cell,
+      date: new Date(data.date + "T00:00:00Z"),
+      notes: data.notes,
+      recordedBy: data.recordedBy || null,
+    },
+  });
+  revalidatePath("/");
+  return note;
+}
+
+export async function deleteActivityNote(id: string) {
+  const note = await prisma.activityNote.delete({
+    where: { id },
+  });
+  revalidatePath("/");
+  return note;
+}
+
+

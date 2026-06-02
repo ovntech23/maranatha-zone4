@@ -25,6 +25,9 @@ import {
   deleteExpense,
   addPledgeEvent,
   deletePledgeEvent,
+  addActivityNote,
+  updateActivityNote,
+  deleteActivityNote,
 } from "@/app/actions";
 
 
@@ -1723,6 +1726,247 @@ const Finance: React.FC<FinanceProps> = ({ members, meetings, offerings, setOffe
   );
 }
 
+// ─── Activities & Notes Page ─────────────────────────────────────────────
+interface ActivitiesProps {
+  activityNotes: any[];
+  setActivityNotes: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+const ACTIVITY_CATEGORIES = [
+  "Visitation",
+  "Outreach",
+  "Cell Prayer Meeting",
+  "Planning Session",
+  "Special Event",
+  "General Notes",
+];
+
+const ACTIVITY_CELL_OPTIONS = ["A", "B", "Zone", "General"];
+
+const categoryVariant: Record<string, string> = {
+  "Visitation": "green",
+  "Outreach": "accent",
+  "Cell Prayer Meeting": "purple",
+  "Planning Session": "gold",
+  "Special Event": "coral",
+  "General Notes": "muted",
+};
+
+const Activities: React.FC<ActivitiesProps> = ({ activityNotes, setActivityNotes }) => {
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [cellFilter, setCellFilter] = useState("All");
+  const [form, setForm] = useState({
+    title: "",
+    category: "General Notes",
+    cell: "General",
+    date: new Date().toISOString().slice(0, 10),
+    notes: "",
+    recordedBy: "",
+  });
+
+  const q = search.toLowerCase().trim();
+  const filtered = activityNotes.filter((n) => {
+    if (categoryFilter !== "All" && n.category !== categoryFilter) return false;
+    if (cellFilter !== "All" && n.cell !== cellFilter) return false;
+    if (q && !(n.title?.toLowerCase().includes(q) || n.notes?.toLowerCase().includes(q) || n.recordedBy?.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const hasFilters = categoryFilter !== "All" || cellFilter !== "All" || search !== "";
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(filtered, 15);
+  const clearFilters = () => { setCategoryFilter("All"); setCellFilter("All"); setSearch(""); setCurrentPage(1); };
+
+  const resetForm = () => setForm({ title: "", category: "General Notes", cell: "General", date: new Date().toISOString().slice(0, 10), notes: "", recordedBy: "" });
+
+  const openAdd = () => { resetForm(); setEditingId(null); setShowModal(true); };
+  const openEdit = (n: any) => {
+    setForm({ title: n.title, category: n.category, cell: n.cell, date: n.date, notes: n.notes, recordedBy: n.recordedBy || "" });
+    setEditingId(n.id);
+    setShowModal(true);
+  };
+
+  const save = async () => {
+    if (!form.title.trim() || !form.notes.trim()) return;
+    if (editingId) {
+      const updated = await updateActivityNote(editingId, form);
+      const formatted = { ...updated, date: updated.date instanceof Date ? updated.date.toISOString().slice(0, 10) : updated.date };
+      setActivityNotes(p => p.map(x => x.id === editingId ? formatted : x));
+      setEditingId(null);
+    } else {
+      const created = await addActivityNote(form);
+      const formatted = { ...created, date: created.date instanceof Date ? created.date.toISOString().slice(0, 10) : created.date };
+      setActivityNotes(p => [formatted, ...p]);
+    }
+    resetForm();
+    setShowModal(false);
+  };
+
+  const remove = async (id: string, title: string) => {
+    if (confirm(`Delete "${title}"? This cannot be undone.`)) {
+      await deleteActivityNote(id);
+      setActivityNotes(p => p.filter(x => x.id !== id));
+    }
+  };
+
+  // Stats
+  const totalA = activityNotes.filter(n => n.cell === "A").length;
+  const totalB = activityNotes.filter(n => n.cell === "B").length;
+  const totalZone = activityNotes.filter(n => n.cell === "Zone").length;
+  const totalGeneral = activityNotes.filter(n => n.cell === "General").length;
+
+  return (
+    <div>
+      <div className="members__header">
+        <div>
+          <h2 className="members__title">Activities &amp; Notes</h2>
+          <div className="dashboard__subtitle">Log cell visitations, outreach, prayer sessions, and other activities</div>
+        </div>
+        <Btn size="sm" onClick={openAdd}>+ Record Activity</Btn>
+      </div>
+
+      {/* Stats */}
+      <div className="dashboard__stats" style={{ marginBottom: 20 }}>
+        <Stat label="Total recorded" value={activityNotes.length} />
+        <Stat label="Cell A" value={totalA} variant="purple" />
+        <Stat label="Cell B" value={totalB} variant="green" />
+        <Stat label="Zone" value={totalZone} variant="gold" />
+        <Stat label="General" value={totalGeneral} />
+      </div>
+
+      {/* Filters */}
+      <div className="search-toolbar">
+        <div className="search-toolbar__input-wrap">
+          <span className="search-toolbar__icon">🔍</span>
+          <input className="search-toolbar__input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by title, notes or recorder..." />
+        </div>
+        <select className="search-toolbar__filter" value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+          <option value="All">All Categories</option>
+          {ACTIVITY_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+        </select>
+        <select className="search-toolbar__filter" value={cellFilter} onChange={e => setCellFilter(e.target.value)}>
+          <option value="All">All Cells</option>
+          <option value="A">Cell A</option>
+          <option value="B">Cell B</option>
+          <option value="Zone">Zone</option>
+          <option value="General">General</option>
+        </select>
+        {hasFilters && <button className="search-toolbar__clear" onClick={clearFilters}>✕ Clear</button>}
+        <span className="search-toolbar__results">{filtered.length} of {activityNotes.length}</span>
+      </div>
+
+      {/* Table */}
+      <Card style={{ padding: 0, overflow: "hidden" }}>
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Cell</th>
+                <th>Notes</th>
+                <th>Recorded By</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center" style={{ padding: "2rem", color: "var(--text-secondary)" }}>
+                    No activities recorded yet. Click <strong>+ Record Activity</strong> to get started.
+                  </td>
+                </tr>
+              )}
+              {paginatedItems.map(n => (
+                <tr key={n.id}>
+                  <td><span className="finance__note text-sm">{fmtDate(n.date)}</span></td>
+                  <td><span className="font-bold">{n.title}</span></td>
+                  <td><Badge label={n.category} variant={categoryVariant[n.category] || ""} /></td>
+                  <td>
+                    {n.cell === "General"
+                      ? <Badge label="General" />
+                      : n.cell === "Zone"
+                        ? <Badge label="Zone" variant="gold" />
+                        : <Badge label={`Cell ${n.cell}`} variant={n.cell === "A" ? "purple" : "green"} />}
+                  </td>
+                  <td style={{ maxWidth: 280, whiteSpace: "pre-wrap", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                    {n.notes.length > 120 ? n.notes.slice(0, 120) + "…" : n.notes}
+                  </td>
+                  <td><span className="text-sm" style={{ color: "var(--text-secondary)" }}>{n.recordedBy || "—"}</span></td>
+                  <td className="text-right">
+                    <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
+                      <Btn variant="ghost" size="sm" onClick={() => openEdit(n)}>Edit</Btn>
+                      <Btn variant="danger" size="sm" onClick={() => remove(n.id, n.title)}>Delete</Btn>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+      </Card>
+
+      {/* Add / Edit Modal */}
+      {showModal && (
+        <Modal
+          title={editingId ? "Edit Activity / Note" : "Record Activity / Note"}
+          onClose={() => { setShowModal(false); setEditingId(null); resetForm(); }}
+        >
+          <div>
+            <div className="field-label">Title</div>
+            <input className="input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. Visitation to Mwansa household" />
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Category</div>
+              <select className="select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                {ACTIVITY_CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Cell / Scope</div>
+              <select className="select" value={form.cell} onChange={e => setForm({ ...form, cell: e.target.value })}>
+                <option value="A">Cell A</option>
+                <option value="B">Cell B</option>
+                <option value="Zone">Zone (Combined)</option>
+                <option value="General">General</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Date</div>
+              <input className="input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div className="field-label">Recorded / Led By (optional)</div>
+              <input className="input" value={form.recordedBy} onChange={e => setForm({ ...form, recordedBy: e.target.value })} placeholder="e.g. Deacon Banda" />
+            </div>
+          </div>
+          <div>
+            <div className="field-label">Notes / Details</div>
+            <textarea
+              className="input"
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+              placeholder="Describe what happened, who was involved, outcomes, prayer points, follow-up actions..."
+              rows={5}
+              style={{ resize: "vertical" }}
+            />
+          </div>
+          <div className="flex gap-2" style={{ marginTop: 4 }}>
+            <Btn style={{ flex: 1 }} onClick={save}>{editingId ? "Update" : "Save Activity"}</Btn>
+            <Btn variant="ghost" style={{ flex: 1 }} onClick={() => { setShowModal(false); setEditingId(null); resetForm(); }}>Cancel</Btn>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+};
+
 // ─── Reports Page ────────────────────────────────────────────────────────
 interface ReportsProps {
   members: any[];
@@ -1734,6 +1978,7 @@ interface ReportsProps {
   openingBalances: any[];
   sundaySchoolChildren: any[];
   pledgeEvents: any[];
+  activityNotes: any[];
   userSession?: {
     name: string;
     email: string;
@@ -1751,6 +1996,7 @@ const Reports: React.FC<ReportsProps> = ({
   openingBalances,
   sundaySchoolChildren,
   pledgeEvents,
+  activityNotes,
   userSession,
 }) => {
   const [cellFilter, setCellFilter] = useState("All");
@@ -2218,6 +2464,47 @@ const Reports: React.FC<ReportsProps> = ({
             </div>
           )}
 
+          {/* Activities & Notes Summary in Report */}
+          {reportType === "Full" && (
+            <div className="report-section page-break">
+              <h4 className="report-section-title">5. Activities &amp; Notes Log</h4>
+              <p className="report-paragraph" style={{ marginBottom: "12px" }}>
+                The following activities, visitations, outreach efforts, and administrative notes were recorded during this period.
+              </p>
+              {activityNotes.length === 0 ? (
+                <div className="report-empty-message">No activities recorded.</div>
+              ) : (
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Cell</th>
+                      <th>Recorded By</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...activityNotes]
+                      .sort((a, b) => b.date.localeCompare(a.date))
+                      .filter(n => cellFilter === "All" ? true : (n.cell === cellFilter || n.cell === "General"))
+                      .map(n => (
+                        <tr key={n.id}>
+                          <td>{fmtDate(n.date)}</td>
+                          <td><span className="font-bold">{n.title}</span></td>
+                          <td>{n.category}</td>
+                          <td>{n.cell === "General" ? "General" : n.cell === "Zone" ? "Zone" : `Cell ${n.cell}`}</td>
+                          <td>{n.recordedBy || "—"}</td>
+                          <td style={{ fontSize: "0.8em", color: "#444" }}>{n.notes}</td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+
           <div className="report-footer">
             <div className="report-divider" style={{ marginTop: "40px" }}></div>
             <div className="flex justify-between items-center text-xs" style={{ color: "var(--text-secondary)", marginTop: "10px" }}>
@@ -2258,6 +2545,7 @@ interface Zone4AppProps {
   initialOpeningBalances: any[];
   initialSundaySchoolChildren: any[];
   initialPledgeEvents: any[];
+  initialActivityNotes: any[];
   userSession?: {
     name: string;
     email: string;
@@ -2276,6 +2564,7 @@ export default function Zone4App({
   initialOpeningBalances,
   initialSundaySchoolChildren,
   initialPledgeEvents,
+  initialActivityNotes,
   userSession,
 }: Zone4AppProps) {
   const [page, setPage] = useState("dashboard");
@@ -2288,6 +2577,7 @@ export default function Zone4App({
   const [openingBalances, setOpeningBalances] = useState(initialOpeningBalances);
   const [sundaySchoolChildren, setSundaySchoolChildren] = useState(initialSundaySchoolChildren);
   const [pledgeEvents, setPledgeEvents] = useState(initialPledgeEvents);
+  const [activityNotes, setActivityNotes] = useState(initialActivityNotes);
 
   const props = {
     members,
@@ -2308,6 +2598,8 @@ export default function Zone4App({
     setSundaySchoolChildren,
     pledgeEvents,
     setPledgeEvents,
+    activityNotes,
+    setActivityNotes,
   };
 
 
@@ -2317,6 +2609,7 @@ export default function Zone4App({
     { key: "sunday-school", label: "Sunday School" },
     { key: "attendance", label: "Attendance" },
     { key: "finance", label: "Finance" },
+    { key: "activities", label: "Activities & Notes" },
     { key: "reports", label: "Reports" },
   ];
 
@@ -2375,6 +2668,7 @@ export default function Zone4App({
         {page === "sunday-school" && <SundaySchool {...props} />}
         {page === "attendance" && <Attendance {...props} />}
         {page === "finance" && <Finance {...props} />}
+        {page === "activities" && <Activities activityNotes={activityNotes} setActivityNotes={setActivityNotes} />}
         {page === "reports" && <Reports {...props} userSession={userSession} />}
       </main>
     </div>
